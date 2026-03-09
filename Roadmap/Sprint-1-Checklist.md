@@ -14,16 +14,16 @@
 **Goal:** Create the repo on GitHub first so git history starts from the very first line of code
 
 ```markdown
-[ ] Create GitHub Repository on GitHub website
+[✅] Create GitHub Repository on GitHub website
     Name: clinic-management-api
     Visibility: Public (for portfolio visibility)
     ✅ Add README.md
     ✅ Add .gitignore → select Visual Studio template
 
-[ ] Clone the repo locally
+[✅] Clone the repo locally
     Command: git clone https://github.com/<your-username>/clinic-management-api.git
 
-[ ] Navigate into the cloned folder
+[✅] Navigate into the cloned folder
     Command: cd clinic-management-api
 ```
 
@@ -42,7 +42,7 @@ Local first → need manual git init + remote setup → risk of messy history �
 **Goal:** First thing an interviewer sees when opening your GitHub — make it count
 
 ```markdown
-[ ] Update README.md with the following sections:
+[✅] Update README.md with the following sections:
 
     # Clinic Management API
 
@@ -76,30 +76,30 @@ Local first → need manual git init + remote setup → risk of messy history �
 **Goal:** Create the solution with 3 separated projects for clean architecture from day one
 
 ```markdown
-[ ] Create the Solution
+[✅] Create the Solution
     Command: dotnet new sln -n ClinicManagementAPI
 
-[ ] Create the Web API Project (Minimal API)
+[✅] Create the Web API Project (Minimal API)
     Command: dotnet new webapi -n ClinicManagementAPI.Api --use-minimal-apis
 
-[ ] Create the Core Project (Business Logic - Class Library)
+[✅] Create the Core Project (Business Logic - Class Library)
     Command: dotnet new classlib -n ClinicManagementAPI.Core
 
-[ ] Create the Test Project
+[✅] Create the Test Project
     Command: dotnet new xunit -n ClinicManagementAPI.Tests
 
-[ ] Add all projects to the Solution
+[✅] Add all projects to the Solution
     Command: dotnet sln add ClinicManagementAPI.Api
     Command: dotnet sln add ClinicManagementAPI.Core
     Command: dotnet sln add ClinicManagementAPI.Tests
 
-[ ] Add reference from Api to Core
+[✅] Add reference from Api to Core
     Command: dotnet add ClinicManagementAPI.Api reference ClinicManagementAPI.Core
 
-[ ] Add reference from Tests to Core
+[✅] Add reference from Tests to Core
     Command: dotnet add ClinicManagementAPI.Tests reference ClinicManagementAPI.Core
 
-[ ] Add reference from Tests to Api
+[✅] Add reference from Tests to Api
     Command: dotnet add ClinicManagementAPI.Tests reference ClinicManagementAPI.Api
 ```
 
@@ -119,8 +119,9 @@ ClinicManagementAPI.Tests    → Tests for both projects
 **Goal:** One file controls shared settings for ALL projects — no repetition in each .csproj
 
 ```markdown
-[ ] Create Directory.Build.props in the Solution root folder
+[✅] Create Directory.Build.props in the Solution root folder
     Location: /clinic-management-api/Directory.Build.props
+    Command: touch Directory.Build.props
     Content:
 ```
 
@@ -136,14 +137,14 @@ ClinicManagementAPI.Tests    → Tests for both projects
 ```
 
 ```markdown
-[ ] Remove duplicate properties from each .csproj file
+[✅] Remove duplicate properties from each .csproj file
     After creating Directory.Build.props, remove TargetFramework,
     Nullable, and ImplicitUsings from:
     - ClinicManagementAPI.Api.csproj
     - ClinicManagementAPI.Core.csproj
     - ClinicManagementAPI.Tests.csproj
 
-[ ] Verify the solution still builds
+[✅] Verify the solution still builds
     Command: dotnet build
 ```
 
@@ -163,8 +164,9 @@ TreatWarningsAsErrors → Forces you to write clean code from day one ✅
 **Goal:** One single place to control all NuGet package versions across all projects
 
 ```markdown
-[ ] Create Directory.Packages.props in the Solution root folder
+[✅] Create Directory.Packages.props in the Solution root folder
     Location: /clinic-management-api/Directory.Packages.props
+    Command: touch Directory.Packages.props
     Content:
 ```
 
@@ -206,17 +208,17 @@ TreatWarningsAsErrors → Forces you to write clean code from day one ✅
 ```
 
 ```markdown
-[ ] Install packages in API project (no version needed — CPM handles it)
+[✅] Install packages in API project (no version needed — CPM handles it)
     Command: dotnet add ClinicManagementAPI.Api package Microsoft.EntityFrameworkCore.SqlServer
     Command: dotnet add ClinicManagementAPI.Api package Microsoft.EntityFrameworkCore.Design
     Command: dotnet add ClinicManagementAPI.Api package Microsoft.AspNetCore.Authentication.JwtBearer
     Command: dotnet add ClinicManagementAPI.Api package Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore
 
-[ ] Install packages in Test project
+[✅] Install packages in Test project
     Command: dotnet add ClinicManagementAPI.Tests package Microsoft.EntityFrameworkCore.InMemory
     Command: dotnet add ClinicManagementAPI.Tests package Microsoft.AspNetCore.Mvc.Testing
 
-[ ] Verify all versions are consistent across projects
+[✅] Verify all versions are consistent across projects
     Command: dotnet restore
 ```
 
@@ -235,10 +237,10 @@ With CPM    → One file controls all versions → No conflicts, easy to update
 **Goal:** Consistent code style across the entire project — anyone opening the repo sees the same formatting
 
 ```markdown
-[ ] Generate .editorconfig in the Solution root folder
+[✅] Generate .editorconfig in the Solution root folder
     Command: dotnet new editorconfig
 
-[ ] Verify .editorconfig was created
+[✅] Verify .editorconfig was created
     Location: /clinic-management-api/.editorconfig
 ```
 
@@ -274,15 +276,15 @@ ClinicManagementAPI.Tests/
 ├── Unit/            → Unit tests for Services
 └── Integration/     → Integration tests for Endpoints
 
-[ ] Create Endpoints folder in Api project
-[ ] Create DTOs folder in Api project
-[ ] Create Middleware folder in Api project
-[ ] Create Models folder in Core project
-[ ] Create Data folder in Core project
-[ ] Create Services folder in Core project
-[ ] Create Interfaces folder in Core project
-[ ] Create Unit folder in Tests project
-[ ] Create Integration folder in Tests project
+[✅] Create Endpoints folder in Api project
+[✅] Create DTOs folder in Api project
+[✅] Create Middleware folder in Api project
+[✅] Create Models folder in Core project
+[✅] Create Data folder in Core project
+[✅] Create Services folder in Core project
+[✅] Create Interfaces folder in Core project
+[✅] Create Unit folder in Tests project
+[✅] Create Integration folder in Tests project
 ```
 
 ---
@@ -293,7 +295,7 @@ ClinicManagementAPI.Tests/
 **Goal:** A clean way for services to say "I succeeded" or "I failed" — without throwing exceptions for expected errors
 
 ```markdown
-[ ] Create Result<T> class in Core/Models/Result.cs
+[✅] Create Result<T> class in Core/Models/Result.cs
     Properties:
     - IsSuccess (bool)
     - Value (T?) — the data when successful
@@ -304,7 +306,7 @@ ClinicManagementAPI.Tests/
     - Result<T>.Success(T value)
     - Result<T>.Failure(string error, int statusCode = 400)
 
-[ ] Verify the class compiles
+[✅] Verify the class compiles
     Command: dotnet build
 ```
 
