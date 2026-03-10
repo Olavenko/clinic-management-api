@@ -37,7 +37,12 @@ ClinicManagementAPI/
 │
 ├── Roadmap/                          # Sprint checklists & planning docs
 ├── docs/                             # Additional documentation
-├── .github/workflows/build.yml       # CI pipeline
+├── .github/
+│   ├── workflows/build.yml           # CI pipeline
+│   └── dependabot.yml                # Automated dependency updates
+├── .editorconfig                     # Code style & naming conventions
+├── .gitattributes                    # Line ending normalization
+├── .gitignore                        # Files excluded from source control
 ├── Directory.Build.props             # Shared build settings (TFM, nullable, etc.)
 ├── Directory.Packages.props          # Central Package Management
 └── ClinicManagementAPI.slnx          # Solution file
@@ -131,14 +136,34 @@ The GitHub Actions workflow (`.github/workflows/build.yml`) runs on:
 
 Pipeline steps: Restore → Build → Test
 
+### Dependabot
+
+Automated dependency updates are configured via `.github/dependabot.yml`:
+
+- **NuGet packages** — checked weekly (Mondays)
+- **GitHub Actions** — checked weekly (Mondays)
+
+### Branch Protection
+
+The `main` branch is protected with the following rules:
+
+- All changes must go through a **Pull Request**
+- CI status checks must **pass** before merging
+
 ## Build Configuration
 
 This project uses modern .NET practices:
 
 - **Central Package Management** — all NuGet versions defined in `Directory.Packages.props`
-- **Shared Build Props** — common settings (target framework, nullable, warnings-as-errors) in `Directory.Build.props`
-- **Warnings as Errors** — enforced across all projects
+- **Shared Build Props** — common settings in `Directory.Build.props`:
+  - Target Framework: `net10.0`
+  - Nullable reference types: enabled
+  - Implicit usings: enabled
+  - Warnings as Errors: enforced
+  - Code style enforcement in build: enabled
+  - Analysis level: latest
 - **File-scoped namespaces** and **primary constructors** — enforced via `.editorconfig`
+- **Line ending normalization** — ensured via `.gitattributes`
 
 ## License
 
