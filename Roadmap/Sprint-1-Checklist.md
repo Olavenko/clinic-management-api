@@ -350,22 +350,22 @@ Together                       → Expected errors = Result, Unexpected errors =
 **Goal:** Connect the API to SQL Server securely — no sensitive data on GitHub ever
 
 ```markdown
-[ ] Initialize User Secrets in API project
+[✅] Initialize User Secrets in API project
     Command: dotnet user-secrets init --project ClinicManagementAPI.Api
 
-[ ] Add Connection String via User Secrets
+[✅] Add Connection String via User Secrets
     Command: dotnet user-secrets set "ConnectionStrings:ClinicDb"
              "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;"
              --project ClinicManagementAPI.Api
 
-[ ] Update appsettings.json (safe placeholder — gets committed)
+[✅] Update appsettings.json (safe placeholder — gets committed)
     {
       "ConnectionStrings": {
         "ClinicDb": "CONFIGURED_VIA_USER_SECRETS"
       }
     }
 
-[ ] Create appsettings.Development.json (local overrides — never committed)
+[✅] Create appsettings.Development.json (local overrides — never committed)
     {
       "Logging": {
         "LogLevel": {
@@ -375,18 +375,23 @@ Together                       → Expected errors = Result, Unexpected errors =
       }
     }
 
-[ ] Verify .gitignore includes these entries explicitly
+[✅] Verify .gitignore includes these entries explicitly
     **/appsettings.Development.json
     *.user
     .vs/
 
-[ ] Create AppDbContext (empty for now) in Core/Data/
+[✅] Create AppDbContext (empty for now) in Core/Data/
+    Location: ClinicManagementAPI.Core/Data/AppDbContext.cs
+    command: New-Item ClinicManagementAPI.Core/Data/AppDbContext.cs
     Inherits: DbContext
 
-[ ] Register AppDbContext in Program.cs
+[✅] Add EF Core package to Core project
+    Command: dotnet add ClinicManagementAPI.Core package Microsoft.EntityFrameworkCore
+
+[✅] Register AppDbContext in Program.cs
     Method: builder.Services.AddDbContext<AppDbContext>()
 
-[ ] Verify the API starts with no errors
+[✅] Verify the API starts with no errors
     Command: dotnet run --project ClinicManagementAPI.Api
 ```
 
@@ -406,7 +411,8 @@ User Secrets                → Sensitive data → Never committed ✅
 **Goal:** Every unexpected error returns a clean JSON response — never expose stack traces to clients
 
 ```markdown
-[ ] Create GlobalExceptionHandler in Api/Middleware/
+[✅] Create GlobalExceptionHandler in Api/Middleware/
+    command: New-Item ClinicManagementAPI.Api/Middleware/GlobalExceptionHandler.cs
     Implements: IExceptionHandler
     Logic:
     - Catch all unhandled exceptions
@@ -418,14 +424,14 @@ User Secrets                → Sensitive data → Never committed ✅
         "detail": "Something went wrong. Please try again later."
       }
 
-[ ] Register GlobalExceptionHandler in Program.cs
+[✅] Register GlobalExceptionHandler in Program.cs
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>()
     builder.Services.AddProblemDetails()
 
-[ ] Add UseExceptionHandler in Program.cs (before other middleware)
+[✅] Add UseExceptionHandler in Program.cs (before other middleware)
     app.UseExceptionHandler()
 
-[ ] Test by throwing a temporary exception in a test endpoint
+[✅] Test by throwing a temporary exception in a test endpoint
     Verify: API returns JSON error, not HTML stack trace
 ```
 
@@ -447,14 +453,14 @@ Works with Result Pattern:
 **Goal:** A simple endpoint that tells you if the API and database are alive
 
 ```markdown
-[ ] Register Health Checks in Program.cs
+[✅] Register Health Checks in Program.cs
     builder.Services.AddHealthChecks()
                     .AddDbContextCheck<AppDbContext>("database")
 
-[ ] Map Health Check endpoint in Program.cs
+[✅] Map Health Check endpoint in Program.cs
     app.MapHealthChecks("/health")
 
-[ ] Test the endpoint
+[✅] Test the endpoint
     GET /health → should return "Healthy" when DB is connected
     GET /health → should return "Unhealthy" when DB is down
 ```
@@ -475,7 +481,9 @@ Interviewers love it → Shows you think about production readiness ✅
 **Goal:** Every push triggers an automatic build — broken code is caught immediately
 
 ```markdown
-[ ] Create GitHub Actions workflow file
+[✅] Create GitHub Actions workflow file
+    Command: New-Item -ItemType Directory -Path .github/workflows
+    Command: New-Item .github/workflows/build.yml
     Location: .github/workflows/build.yml
     Content:
 
@@ -507,14 +515,14 @@ Interviewers love it → Shows you think about production readiness ✅
           - name: Test
             run: dotnet test --no-build --verbosity normal
 
-[ ] Push everything to GitHub
+[✅] Push everything to GitHub
     Command: git add .
     Command: git commit -m "feat: initial project setup"
     Command: git push
 
-[ ] Verify CI pipeline runs green on GitHub Actions tab
+[✅] Verify CI pipeline runs green on GitHub Actions tab
 
-[ ] Enable Branch Protection on main branch
+[✅] Enable Branch Protection on main branch
     GitHub website → Settings → Branches → Add rule
     Branch name: main
     ✅ Require status checks to pass before merging

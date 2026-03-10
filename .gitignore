@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+**/appsettings.Development.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -416,3 +417,18 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Gemini / AI agent files
+.gemini/
+.agents/
