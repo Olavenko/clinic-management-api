@@ -1,6 +1,9 @@
-using ClinicManagementAPI.Api.Middleware;
+﻿using ClinicManagementAPI.Api.Middleware;
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.Models;
+using ClinicManagementAPI.Core.Services;
+using ClinicManagementAPI.Core.Interfaces;
+using ClinicManagementAPI.Api.Endpoints;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +23,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// Register AuthService for DI — any class that needs IAuthService gets AuthService
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("ClinicDb");
 
@@ -96,6 +102,9 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+// Map auth endpoints (register, login, refresh, logout)
+app.MapAuthEndpoints();
 
 app.Run();
 
