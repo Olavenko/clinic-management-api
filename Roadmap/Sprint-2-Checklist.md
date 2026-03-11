@@ -14,30 +14,55 @@
 **Goal:** Register ASP.NET Core Identity in the project and connect it to the Database
 
 ```markdown
-[ ] Add Identity packages to API project (already in Directory.Packages.props)
-    Command: dotnet add ClinicManagementAPI.Api package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+[✅] Add Identity package to Core project
+    Command: dotnet add ClinicManagementAPI.Core package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+    ⚠️ Note: Package added to Core (not Api) because ApplicationUser lives in Core
+             Api accesses it through project reference automatically
 
-[ ] Create ApplicationUser model in Core/Models/
-    Inherits: IdentityUser
+[✅] Add SqlServer package to Core project
+    Command: dotnet add ClinicManagementAPI.Core package Microsoft.EntityFrameworkCore.SqlServer
+    ⚠️ Note: Required for Migration — without it, SqlServerModelBuilderExtensions error occurs
+
+[✅] Create ApplicationUser model in Core/Models/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Models" -Name "ApplicationUser.cs"
+    Inherits: IdentityUser (provides Id, Email, PasswordHash, UserName, PhoneNumber, etc.)
     Extra fields:
-    - FullName (string)
-    - CreatedAt (DateTime)
+    - FullName (string) — not in IdentityUser, specific to our Clinic
+    - CreatedAt (DateTime) — defaults to DateTime.UtcNow
 
-[ ] Update AppDbContext to inherit from IdentityDbContext<ApplicationUser>
+[✅] Update AppDbContext to inherit from IdentityDbContext<ApplicationUser>
     Location: Core/Data/AppDbContext.cs
+    Changed: DbContext → IdentityDbContext<ApplicationUser>
+    Added usings:
+    - Microsoft.AspNetCore.Identity.EntityFrameworkCore
+    - ClinicManagementAPI.Core.Models
+    Result: Auto-generates 7 Identity tables (AspNetUsers, AspNetRoles, etc.)
 
-[ ] Register Identity in Program.cs
+[✅] Register Identity in Program.cs
+    Added usings:
+    - ClinicManagementAPI.Core.Models
+    - Microsoft.AspNetCore.Identity
+    Code:
     builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                     .AddEntityFrameworkStores<AppDbContext>()
                     .AddDefaultTokenProviders()
 
-[ ] Add Identity Migration
+[✅] Fix Connection String for SQL Server Express
+    Command: dotnet user-secrets set "ConnectionStrings:ClinicDb"
+             "Server=localhost\SQLEXPRESS;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;"
+             --project ClinicManagementAPI.Api
+    ⚠️ Note: Original had Server=localhost — must be localhost\SQLEXPRESS for Express edition
+
+[✅] Add Identity Migration
     Command: dotnet ef migrations add AddIdentity --project ClinicManagementAPI.Core
                                                   --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration to Database
+[✅] Apply Migration to Database
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
+    Result: Created ClinicDb database + 7 Identity tables
+    Tables: AspNetUsers, AspNetRoles, AspNetRoleClaims, AspNetUserClaims,
+            AspNetUserLogins, AspNetUserRoles, AspNetUserTokens
 ```
 
 **Why Identity?**
@@ -55,36 +80,35 @@ ASP.NET Core Identity → Microsoft handles all security concerns ✅ (industry 
 **Goal:** Configure JWT settings securely — secret key never goes to GitHub
 
 ```markdown
-[ ] Add JWT settings placeholder in appsettings.json (safe to commit)
-    {
-      "Jwt": {
-        "Issuer": "ClinicManagementAPI",
-        "Audience": "ClinicManagementAPIUsers",
-        "ExpiryMinutes": 60,
-        "RefreshTokenExpiryDays": 7
-      }
-    }
+[✅] Add JWT settings placeholder in appsettings.json (safe to commit)
+    Added "Jwt" section with: Issuer, Audience, ExpiryMinutes (60), RefreshTokenExpiryDays (7)
+    ⚠️ Note: Secret Key is NOT here — it's in User Secrets only
 
-[ ] Add JWT Secret Key via User Secrets (never committed)
+[✅] JWT Secret Key already configured via User Secrets (Sprint 1)
     Command: dotnet user-secrets set "Jwt:Key" "your-super-secret-key-min-32-characters"
              --project ClinicManagementAPI.Api
 
-[ ] Register JWT Authentication in Program.cs
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                    .AddJwtBearer(options => { ... })
+[✅] Create JwtSettings class in Core/Models/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Models" -Name "JwtSettings.cs"
+    Properties: Key, Issuer, Audience, ExpiryMinutes (int), RefreshTokenExpiryDays (int)
+    Purpose: Bind JSON settings to a C# object — avoids magic strings
 
-[ ] Add app.UseAuthentication() and app.UseAuthorization() in Program.cs
-    Order matters:
-    app.UseAuthentication()  → must come first
-    app.UseAuthorization()   → must come second
+[✅] Register JWT Authentication in Program.cs
+    Added usings:
+    - System.Text
+    - Microsoft.AspNetCore.Authentication.JwtBearer
+    - Microsoft.IdentityModel.Tokens
+    Code:
+    - Bind JwtSettings from Configuration using GetSection("Jwt").Get<JwtSettings>()
+    - Register JwtSettings as Singleton for DI
+    - AddAuthentication with JwtBearerDefaults.AuthenticationScheme
+    - AddJwtBearer with TokenValidationParameters (Issuer, Audience, SigningKey, Lifetime)
 
-[ ] Create JwtSettings class in Core/Models/
-    Properties:
-    - Key (string)
-    - Issuer (string)
-    - Audience (string)
-    - ExpiryMinutes (int)
-    - RefreshTokenExpiryDays (int)
+[✅] Add app.UseAuthentication() and app.UseAuthorization() in Program.cs
+    Location: after app.UseHttpsRedirection()
+    ⚠️ Note: Order matters!
+    app.UseAuthentication()  → "Who are you?" must come first
+    app.UseAuthorization()   → "Are you allowed?" must come second
 ```
 
 **Why User Secrets for JWT Key?**
@@ -102,21 +126,34 @@ JWT Key in User Secrets     → Local only → Tokens are safe ✅
 **Goal:** Define roles from day one — will be applied to endpoints in Sprint 3
 
 ```markdown
-[ ] Create AppRoles static class in Core/Models/
-    public static class AppRoles
-    {
-        public const string Admin        = "Admin";
-        public const string Receptionist = "Receptionist";
-        public const string Patient      = "Patient";
-    }
-
-[ ] Create DatabaseSeeder in Core/Data/
-    Seeds the 3 roles into the Database on startup if they don't exist:
+[✅] Create AppRoles static class in Core/Models/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Models" -Name "AppRoles.cs"
+    Roles (4 instead of 3 — added Doctor as essential clinic role):
     - Admin
+    - Doctor
     - Receptionist
     - Patient
+    ⚠️ Note: Applied YAGNI principle — only added roles needed now
+             Other roles (Nurse, Pharmacist, etc.) will be added in future sprints
 
-[ ] Call DatabaseSeeder in Program.cs after app.Build()
+[✅] Create DatabaseSeeder in Core/Data/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Data" -Name "DatabaseSeeder.cs"
+    Static method SeedRolesAsync(RoleManager<IdentityRole>)
+    Logic: loops through AppRoles, checks RoleExistsAsync → creates if missing
+    Safe to run multiple times — skips existing roles
+
+[✅] Call DatabaseSeeder in Program.cs after app.Build()
+    Added using: ClinicManagementAPI.Core.Data
+    Code: Creates a scope → gets RoleManager from DI → calls SeedRolesAsync
+    ⚠️ Note: Uses "using" block to dispose the scope after seeding
+
+[✅] Add Authorization service in Program.cs
+    Command: builder.Services.AddAuthorization()
+    ⚠️ Note: Was missing — required by app.UseAuthorization()
+
+[✅] Verified roles in database
+    Command: sqlcmd -S localhost\SQLEXPRESS -d ClinicDb -E -Q "SELECT Name FROM AspNetRoles"
+    Result: Admin, Doctor, Receptionist, Patient ✅
 ```
 
 **Why seed roles now?**
@@ -134,29 +171,41 @@ Roles defined later → Need to revisit Auth code in Sprint 3 ❌
 **Goal:** Define the request and response shapes with proper validation — reject bad data before it reaches your services
 
 ```markdown
-[ ] Create RegisterRequest DTO in Api/DTOs/Auth/
+[✅] Create DTOs folder structure
+    Command: New-Item -Path "ClinicManagementAPI.Api\DTOs\Auth" -ItemType Directory -Force
+
+[✅] Create RegisterRequest DTO in Api/DTOs/Auth/
+    Command: New-Item -Path "ClinicManagementAPI.Api\DTOs\Auth" -Name "RegisterRequest.cs"
     Properties:
     - FullName (string, [Required], [MinLength(2)], [MaxLength(100)])
     - Email (string, [Required], [EmailAddress])
     - Password (string, [Required], [MinLength(8)])
+    ⚠️ Note: No Role field — all new users register as Patient by default
+             Only Admin can assign other roles (Sprint 3)
 
-    ⚠️ No Role field — all new users register as Patient by default
-    Only Admin can assign other roles (will be added in Sprint 3)
-
-[ ] Create LoginRequest DTO in Api/DTOs/Auth/
+[✅] Create LoginRequest DTO in Api/DTOs/Auth/
+    Command: New-Item -Path "ClinicManagementAPI.Api\DTOs\Auth" -Name "LoginRequest.cs"
     Properties:
     - Email (string, [Required], [EmailAddress])
     - Password (string, [Required])
+    ⚠️ Note: No [MinLength] on Password — length was validated at Register
+             Here we only check it exists, service verifies correctness
 
-[ ] Create AuthResponse DTO in Api/DTOs/Auth/
+[✅] Create AuthResponse DTO in Api/DTOs/Auth/
+    Command: New-Item -Path "ClinicManagementAPI.Api\DTOs\Auth" -Name "AuthResponse.cs"
     Properties:
     - AccessToken (string)
     - RefreshToken (string)
     - ExpiresAt (DateTime)
+    ⚠️ Note: No validation attributes — this is a response, not a request
 
-[ ] Add validation filter in Program.cs to return 400 on invalid input
-    Option A: Use .AddValidation() with data annotations
-    Option B: Manual check with Results.ValidationProblem()
+[✅] Create ValidationFilter for Minimal APIs in Api/Filters/
+    Command: New-Item -Path "ClinicManagementAPI.Api\Filters" -Name "ValidationFilter.cs" -Force
+    Generic filter: ValidationFilter<T> implements IEndpointFilter
+    Logic: Checks request body exists → runs Data Annotations manually → returns 400 if invalid
+    Usage: .AddEndpointFilter<ValidationFilter<RegisterRequest>>() on endpoints
+    ⚠️ Note: Minimal APIs don't auto-validate Data Annotations like Controllers
+             This filter handles it manually before request reaches the handler
 ```
 
 **Why Input Validation?**
