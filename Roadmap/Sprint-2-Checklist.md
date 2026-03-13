@@ -1,4 +1,4 @@
-﻿# Sprint 2 — Authentication (JWT + Refresh Token + Roles Setup)
+# Sprint 2 — Authentication (JWT + Refresh Token + Roles Setup)
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -444,36 +444,71 @@ New token each refresh   → Old token dies, stolen token is useless ✅
 
 ```markdown
 [✅] Create Unit Tests in ClinicManagementAPI.Tests/Unit/AuthServiceTests.cs
-    Test cases:
+    Setup: DI container with AddLogging + InMemory DB + Identity + Role Seeding
+    Cleanup: IDisposable — EnsureDeleted + Dispose + GC.SuppressFinalize
+    Test cases (12 tests):
     - RegisterAsync_WithValidData_ReturnsSuccessResult
     - RegisterAsync_WithExistingEmail_ReturnsFailureResult
+    - RegisterAsync_WithWeakPassword_ReturnsFailureResult
     - LoginAsync_WithValidCredentials_ReturnsSuccessResult
     - LoginAsync_WithWrongPassword_ReturnsFailureResult
     - LoginAsync_WithNonExistentEmail_ReturnsFailureResult (same error as wrong password)
     - RefreshTokenAsync_WithValidToken_ReturnsSuccessResult
     - RefreshTokenAsync_WithExpiredToken_ReturnsFailureResult
+    - RefreshTokenAsync_WithNonExistentToken_ReturnsFailureResult
+    - RefreshTokenAsync_WithRevokedToken_ReturnsFailureResult
     - RevokeTokenAsync_WithValidToken_ReturnsSuccessResult
+    - RevokeTokenAsync_WithNonExistentToken_ReturnsFailureResult
+    ⚠️ Note: Roles must be seeded manually in tests — no Program.cs runs in Unit Tests
+             InMemory DB with Guid.NewGuid() ensures test isolation
+
+[✅] Create CustomWebApplicationFactory in ClinicManagementAPI.Tests/Integration/
+    Location: ClinicManagementAPI.Tests/Integration/CustomWebApplicationFactory.cs
+    Inherits: WebApplicationFactory<Program>
+    Logic: Removes real SQL Server → Adds InMemory Database
+    Uses: ConfigureTestServices + RemoveAll for clean replacement
+    ⚠️ Note: Required "public partial class Program { }" in Api/Program.cs
 
 [✅] Create Integration Tests in ClinicManagementAPI.Tests/Integration/AuthEndpointsTests.cs
-    Test cases:
+    Setup: IClassFixture<CustomWebApplicationFactory> — shared server across all tests
+    Uses: HttpClient with PostAsJsonAsync for JSON requests
+    Test cases (12 tests):
     - POST /api/auth/register → 201 with valid data
-    - POST /api/auth/register → 400 with missing fields
-    - POST /api/auth/register → 400 with invalid email format
-    - POST /api/auth/register → 400 with short password (< 8 chars)
+    - POST /api/auth/register → 400 with missing fields (ValidationFilter)
+    - POST /api/auth/register → 400 with invalid email format (ValidationFilter)
+    - POST /api/auth/register → 400 with short password < 8 chars (ValidationFilter)
     - POST /api/auth/register → 400 with duplicate email
     - POST /api/auth/login    → 200 with valid credentials
     - POST /api/auth/login    → 401 with wrong password
     - POST /api/auth/login    → 401 with non-existent email (same error)
     - POST /api/auth/refresh  → 200 with valid refresh token
-    - POST /api/auth/refresh  → 401 with expired token
-    - POST /api/auth/logout   → 204 on success
+    - POST /api/auth/refresh  → 401 with invalid token
+    - POST /api/auth/logout   → 204 on success (requires Bearer token in header)
     - POST /api/auth/logout   → 401 without JWT (unauthorized)
+    ⚠️ Note: Guid.NewGuid() in emails prevents conflicts — all tests share one InMemory DB
+             Logout test uses HttpRequestMessage to add Authorization header manually
 
 [✅] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
+    Result: 24 tests passed (12 Unit + 12 Integration), 0 failed
 
 [✅] Check coverage
     Command: dotnet test --collect:"XPlat Code Coverage"
+    Tool: dotnet tool install -g dotnet-reportgenerator-globaltool
+    Report: reportgenerator -reports:TestResults\*\coverage.cobertura.xml
+                            -targetdir:coveragereport -reporttypes:TextSummary
+    Result: AuthService 100%, AuthEndpoints 100%, AppDbContext 100%, DatabaseSeeder 100%
+            All DTOs and Models 100% — overall Auth logic coverage well above 70% target
+    ⚠️ Note: Low overall % (17.3%) is due to auto-generated code (Migrations, OpenApi, etc.)
+             Add coveragereport/ and **/TestResults/ to .gitignore
+```
+
+**Why Unit + Integration?**
+
+```markdown
+Unit Tests only   → Business logic works but endpoints might be broken ❌
+Integration only  → Endpoints work but can't pinpoint which service method failed ❌
+Both together     → Full confidence from service layer to HTTP response ✅
 ```
 
 ---
@@ -484,13 +519,13 @@ New token each refresh   → Old token dies, stolen token is useless ✅
 **Goal:** CI pipeline now runs Auth tests automatically on every push
 
 ```markdown
-[ ] Verify build.yml runs dotnet test (already configured in Sprint 1)
+[✅] Verify build.yml runs dotnet test (already configured in Sprint 1)
 
-[ ] Add coverage report step to build.yml
+[✅] Add coverage report step to build.yml
     - name: Test with coverage
       run: dotnet test --collect:"XPlat Code Coverage" --verbosity normal
 
-[ ] Push to GitHub and verify:
+[✅] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests pass in CI
 ```
