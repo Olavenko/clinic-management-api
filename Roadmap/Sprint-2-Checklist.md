@@ -330,56 +330,87 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow users to get a new JWT Token without logging in again
 
 ```markdown
-[ ] Create RefreshToken model in Core/Models/
+[✅] Create RefreshToken model in Core/Models/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Models" -Name "RefreshToken.cs"
     Properties:
-    - Id (int)
-    - Token (string)
+    - Id (int) — auto-increment PK
+    - Token (string) — the random Base64 string
     - ExpiresAt (DateTime)
-    - CreatedAt (DateTime)
-    - IsRevoked (bool)
+    - CreatedAt (DateTime) — defaults to DateTime.UtcNow
+    - IsRevoked (bool) — marks token as cancelled
     - UserId (string → FK to ApplicationUser)
+    - User (ApplicationUser) — navigation property
 
-[ ] Add RefreshTokens DbSet to AppDbContext
+[✅] Add RefreshTokens DbSet + Configuration to AppDbContext
+    Location: Core/Data/AppDbContext.cs
+    Added: public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    Added OnModelCreating override:
+    - base.OnModelCreating(modelBuilder) — required for Identity tables
+    - HasOne(rt => rt.User).WithMany().HasForeignKey(rt => rt.UserId).OnDelete(DeleteBehavior.Restrict)
+    - HasIndex(rt => rt.Token).IsUnique() — fast lookups + no duplicates
 
-[ ] Add RefreshToken Migration
+[✅] Add RefreshToken Migration
     Command: dotnet ef migrations add AddRefreshTokens --project ClinicManagementAPI.Core
                                                        --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[✅] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
+    Verified: sqlcmd confirms 6 columns (Id int, Token nvarchar, ExpiresAt datetime2,
+              CreatedAt datetime2, IsRevoked bit, UserId nvarchar)
 
-[ ] Add RefreshTokenAsync logic in AuthService
-    - Find token in Database
-      → if null, return Result.Failure("Invalid token", 401)
-    - Validate it is not expired and not revoked
-      → if invalid, return Result.Failure("Token expired or revoked", 401)
-    - Revoke old token
-    - Generate new JWT Token
-    - Generate new Refresh Token (with expiry from JwtSettings.RefreshTokenExpiryDays)
-    - Return Result.Success(new AuthResponse { ... })
+[✅] Add AppDbContext to AuthService constructor
+    Changed: AuthService(UserManager, JwtSettings) → AuthService(UserManager, JwtSettings, AppDbContext)
+    Added usings: ClinicManagementAPI.Core.Data, Microsoft.EntityFrameworkCore
 
-[ ] Add RevokeTokenAsync logic in AuthService
-    - Find token in Database
-      → if null, return Result.Failure("Invalid token", 400)
-    - Mark it as revoked
-    - Return Result.Success(true)
+[✅] Update RegisterAsync + LoginAsync to save Refresh Token in Database
+    Added to both methods after GenerateRefreshToken():
+    - dbContext.RefreshTokens.Add(new RefreshToken { Token, UserId, ExpiresAt, CreatedAt })
+    - await dbContext.SaveChangesAsync()
+    ⚠️ Note: Previously tokens were generated but never stored — now they're persisted
 
-[ ] Add Refresh and Logout endpoints in AuthEndpoints.cs
+[✅] Add RefreshTokenAsync logic in AuthService
+    Logic (7 steps):
+    1. Find token in Database using FirstOrDefaultAsync
+       → if null, return Result.Failure("Invalid token", 401)
+    2. Validate it is not expired and not revoked
+       → if invalid, return Result.Failure("Token expired or revoked", 401)
+    3. Revoke old token (IsRevoked = true)
+    4. Get user via userManager.FindByIdAsync(storedToken.UserId)
+    5. Generate new JWT + Refresh Token
+    6. Save new Refresh Token in Database (with expiry from JwtSettings.RefreshTokenExpiryDays)
+    7. Return Result.Success(new AuthResponse { ... })
+    ⚠️ Note: Token Rotation — old token revoked, new one issued every refresh
+
+[✅] Add RevokeTokenAsync logic in AuthService
+    Logic (3 steps):
+    1. Find token in Database
+       → if null, return Result.Failure("Invalid token", 400)
+    2. Mark it as revoked + SaveChangesAsync
+    3. Return Result.Success(true)
+    ⚠️ Note: No expiry/revoked check — logout should succeed even for expired tokens
+             400 not 401 — user is authenticated, the token string is just invalid
+
+[✅] Create RefreshTokenRequest DTO in Core/DTOs/Auth/
+    Command: New-Item -Path "ClinicManagementAPI.Core\DTOs\Auth" -Name "RefreshTokenRequest.cs"
+    Properties: RefreshToken (string, [Required])
+    ⚠️ Note: Minimal API can't bind raw string from body — needs a DTO object
+
+[✅] Add Refresh and Logout endpoints in AuthEndpoints.cs
     POST /api/auth/refresh
-    - Accepts: { refreshToken: string }
-    - Calls AuthService.RefreshTokenAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 200 + new AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - Accepts: RefreshTokenRequest (from body) + IAuthService (from DI)
+    - Calls AuthService.RefreshTokenAsync(request.RefreshToken)
+    - result.IsSuccess → 200 + new AuthResponse
+    - result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
 
     POST /api/auth/logout
-    - Accepts: { refreshToken: string }
-    - Requires valid JWT Token (protected endpoint)
-    - Calls AuthService.RevokeTokenAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 204
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - Accepts: RefreshTokenRequest (from body) + IAuthService (from DI)
+    - Requires valid JWT Token → .RequireAuthorization()
+    - Calls AuthService.RevokeTokenAsync(request.RefreshToken)
+    - result.IsSuccess → 204 NoContent
+    - result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
     - ⚠️ Named "logout" not "revoke" — this is what frontend developers expect
 ```
 
@@ -395,6 +426,13 @@ With Refresh Token    → User gets new JWT silently → Better UX ✅
 ```markdown
 Hardcoded expiry   → Need to redeploy to change it ❌
 Config-based expiry → Change appsettings.json and restart → Flexible ✅
+```
+
+**Why Token Rotation?**
+
+```markdown
+Reuse same refresh token → If stolen, attacker has permanent access ❌
+New token each refresh   → Old token dies, stolen token is useless ✅
 ```
 
 ---
