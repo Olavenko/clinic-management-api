@@ -1,4 +1,4 @@
-﻿using ClinicManagementAPI.Api.Filters;
+using ClinicManagementAPI.Api.Filters;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 
