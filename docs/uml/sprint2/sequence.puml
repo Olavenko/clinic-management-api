@@ -1,0 +1,210 @@
+@startuml
+' -------------------------------------------------------
+' File: sequence.puml
+' -------------------------------------------------------
+' Purpose   : Sequence — Authentication Flow (Register, Login, Refresh, Logout)
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 2 — Authentication
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Sequence — Authentication Flow (Sprint 2 Architecture)
+
+' === Header/Footer ===
+header Clinic Management System - Auth Module
+footer Auth Flow Sequence
+
+' === Global Settings ===
+autonumber "<b>[00]</b>"
+
+' === Participants by Layer ===
+
+box "Presentation / API Layer" #161B22
+    actor "<color:#E6EDF3><&person></color> Client" as CLIENT
+    participant "<color:#58A6FF><&shield></color> AuthEndpoints" as ENDP << (C,#58A6FF) Controller >>
+    participant "<color:#F85149><&cog></color> ValidationFilter" as FILT << (F,#F85149) Filter >>
+end box
+
+box "Core / Application Layer" #0D1117
+    participant "<color:#3FB950><&cog></color> AuthService" as SVC << (S,#3FB950) Service >>
+end box
+
+box "Infrastructure / Persistence" #161B22
+    participant "<color:#A371F7><&people></color> UserManager" as UM << (P,#A371F7) Identity >>
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << (D,#D29922) Database >>
+end box
+
+== Register ==
+
+CLIENT -> ENDP : POST /api/auth/register\n(RegisterRequest)
+activate ENDP
+
+ENDP -> FILT : validate RegisterRequest
+activate FILT
+FILT --> ENDP : pass
+deactivate FILT
+
+ENDP -> SVC : RegisterAsync(request)
+activate SVC
+
+SVC -> UM : FindByEmailAsync(email)
+activate UM
+UM --> SVC : null (not found)
+deactivate UM
+
+note over SVC: User object created with\nFullName and Email
+
+SVC -> UM : CreateAsync(user, password)
+activate UM
+note right UM: Hashes password before save
+UM -> DB : INSERT AspNetUsers
+activate DB
+DB --> UM : OK
+deactivate DB
+UM --> SVC : IdentityResult.Success
+deactivate UM
+
+note over SVC, UM: Assigns AppRoles.Patient\nby default
+SVC -> UM : AddToRoleAsync(user, "Patient")
+activate UM
+UM --> SVC : OK
+deactivate UM
+
+group Token Generation & Persistence
+    SVC -> SVC : GenerateJwtToken(user)
+    note right SVC: Claims: Sub, Email, Jti, fullName\nSigned with SymmetricSecurityKey
+    
+    SVC -> SVC : GenerateRefreshToken()
+    note right SVC: Cryptographically secure 64-byte string
+    
+    SVC -> DB : INSERT RefreshTokens\n(Token, UserId, ExpiresAt)
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+end
+
+SVC --> ENDP : Result.Success(AuthResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 201 Created\n{accessToken, refreshToken, ...}
+deactivate ENDP
+
+== Login ==
+
+CLIENT -> ENDP : POST /api/auth/login\n(LoginRequest)
+activate ENDP
+
+ENDP -> SVC : LoginAsync(request)
+activate SVC
+
+SVC -> UM : FindByEmailAsync(email)
+activate UM
+UM --> SVC : user / null
+deactivate UM
+
+alt user exists
+    SVC -> UM : CheckPasswordAsync(user, password)
+    activate UM
+    UM --> SVC : true / false
+    deactivate UM
+    
+    alt valid password
+        group Token Generation
+            SVC -> SVC : GenerateJwtToken(user)
+            SVC -> SVC : GenerateRefreshToken()
+            SVC -> DB : INSERT RefreshTokens
+            activate DB
+            DB --> SVC : OK
+            deactivate DB
+        end
+        SVC --> ENDP : Result.Success(AuthResponse)
+        ENDP --> CLIENT : 200 OK\n(AuthResponse DTO)
+    else invalid password
+        SVC --> ENDP : Result.Failure("Invalid credentials", 401)
+        ENDP --> CLIENT : 401 Unauthorized
+    end
+else user not found
+    SVC --> ENDP : Result.Failure("Invalid credentials", 401)
+    ENDP --> CLIENT : 401 Unauthorized
+end
+deactivate SVC
+deactivate ENDP
+
+== Refresh Token ==
+
+CLIENT -> ENDP : POST /api/auth/refresh\n(RefreshTokenRequest)
+activate ENDP
+
+ENDP -> SVC : RefreshTokenAsync(refreshToken)
+activate SVC
+
+SVC -> DB : FIND RefreshToken
+activate DB
+DB --> SVC : storedToken / null
+deactivate DB
+
+alt valid & not expired
+    note over SVC: Validate !IsRevoked AND\nExpiresAt > UtcNow
+    
+    SVC -> DB : REVOKE old token (IsRevoked=true)
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+    
+    SVC -> UM : FindByIdAsync(userId)
+    activate UM
+    UM --> SVC : user
+    deactivate UM
+    
+    group Token Rotation (Regeneration)
+        SVC -> SVC : GenerateJwtToken(user)
+        SVC -> SVC : GenerateRefreshToken()
+        SVC -> DB : INSERT new RefreshToken
+        activate DB
+        DB --> SVC : OK
+        deactivate DB
+    end
+    
+    SVC --> ENDP : Result.Success(AuthResponse)
+    ENDP --> CLIENT : 200 OK
+else invalid or expired
+    SVC --> ENDP : Result.Failure(401)
+    ENDP --> CLIENT : 401 Unauthorized
+end
+deactivate SVC
+deactivate ENDP
+
+== Logout ==
+
+CLIENT -> ENDP : POST /api/auth/logout\n[Requires Authorization]
+activate ENDP
+
+ENDP -> SVC : RevokeTokenAsync(refreshToken)
+activate SVC
+
+SVC -> DB : FIND RefreshToken
+activate DB
+DB --> SVC : storedToken / null
+deactivate DB
+
+alt token found
+    SVC -> DB : SET IsRevoked = true
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+    SVC --> ENDP : Result.Success(true)
+    ENDP --> CLIENT : 204 No Content
+else token not found
+    SVC --> ENDP : Result.Failure("Invalid token", 400)
+    ENDP --> CLIENT : 400 Bad Request
+end
+deactivate SVC
+deactivate ENDP
+
+@enduml
+
+

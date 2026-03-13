@@ -1,0 +1,106 @@
+@startuml
+' -------------------------------------------------------
+' File: class.puml
+' -------------------------------------------------------
+' Purpose   : Class Diagram — Domain & Auth Architecture
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 2 — Authentication
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Class Diagram — Auth Architecture (Sprint 2)
+
+' === Header/Footer ===
+header Clinic Management System - Domain Model
+footer Auth Module Structural Design
+
+' === Layout Settings ===
+skinparam groupInheritance 2
+skinparam nodesep 60
+skinparam ranksep 60
+
+' === Namespaces / Packages ===
+
+package "ClinicManagementAPI.Core.Models" #0D1117 {
+    
+    class "<color:#3FB950><&box></color> Result<T>" << (S,#3FB950) Structure >> {
+        + IsSuccess : bool
+        + Value : T
+        + Error : string
+        + StatusCode : int
+        {static} + Success(value: T) : Result<T>
+        {static} + Failure(error: string, code: int) : Result<T>
+    }
+
+    class "<color:#E6EDF3><&person></color> ApplicationUser" << (E,#D29922) Entity >> {
+        + FullName : string
+        + CreatedAt : DateTime
+        -- Identity Properties --
+        + Email : string
+        + UserName : string
+    }
+
+    class "<color:#D29922><&key></color> RefreshToken" << (E,#D29922) Entity >> {
+        + Id : int
+        + Token : string
+        + ExpiresAt : DateTime
+        + CreatedAt : DateTime
+        + IsRevoked : bool
+        + UserId : string
+    }
+}
+
+package "ClinicManagementAPI.Core.Interfaces" #161B22 {
+    interface "IAuthService" << Interface >> {
+        + RegisterAsync(req: RegisterRequest) : Task<Result<AuthResponse>>
+        + LoginAsync(req: LoginRequest) : Task<Result<AuthResponse>>
+        + RefreshTokenAsync(token: string) : Task<Result<AuthResponse>>
+        + RevokeTokenAsync(token: string) : Task<Result<bool>>
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs" #161B22 {
+    class "AuthResponse" << DTO >> {
+        + AccessToken : string
+        + RefreshToken : string
+        + ExpiresAt : DateTime
+    }
+    
+    class "LoginRequest" << DTO >> {
+        + Email : string
+        + Password : string
+    }
+}
+
+' === Relationships (Process Flow 1 -> 4) ===
+
+' (1) Data Structure: User owns multiple tokens
+ApplicationUser "1" *-- "0..*" RefreshToken : " (1) Owns "
+
+' (2) Implementation: AuthService implements the interface
+"ClinicManagementAPI.Core.Services.AuthService" .up.|> IAuthService : " (2) Realizes "
+
+' (3) Usage: Service methods return Result wrappers
+IAuthService -[#3FB950]right-> "Result<T>" : " (3) Wraps "
+
+' (4) Data Transfer: Service maps to DTOs
+IAuthService -[#58A6FF]down-> "AuthResponse" : " (4) Returns "
+"LoginRequest" -[#58A6FF]right-> IAuthService : " (4) Input "
+
+note top of "Result<T>"
+    Generic wrapper for all Service 
+    responses to ensure 
+    consistent error handling.
+end note
+
+note bottom of "ApplicationUser"
+    Inherits from IdentityUser
+    to leverage ASP.NET Core
+    Identity features.
+end note
+
+@enduml

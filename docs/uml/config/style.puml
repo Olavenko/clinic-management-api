@@ -1,0 +1,136 @@
+' ------------------------------------------------------------
+' File: style.puml (Modern Premium Dark — GitHub/C4 Inspired)
+' ------------------------------------------------------------
+' Purpose   : Premium dark theme for Clinic Management API diagrams
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+'
+' Palette (Modern Dark):
+' - Background ...... #0D1117 (Deep Grey)
+' - Surface ......... #161B22 (Medium Grey)
+' - Border .......... #30363D (Soft Grey)
+' - Primary ......... #58A6FF (Electric Blue)
+' - Success ......... #3FB950 (Emerald)
+' - Warning ......... #D29922 (Amber)
+' - Danger .......... #F85149 (Coral Red)
+' - Accent .......... #A371F7 (Hyper Purple)
+' ------------------------------------------------------------
+
+!ifdef USE_CUSTOM_THEME
+
+' === Global Styles ===
+skinparam BackgroundColor #0D1117
+skinparam DefaultFontName "Segoe UI, Inter, sans-serif"
+skinparam DefaultFontSize 14
+skinparam DefaultFontColor #E6EDF3
+skinparam Shadowing false
+skinparam RoundCorner 12
+skinparam Padding 10
+
+' === Arrow Styles ===
+skinparam Arrow {
+    Color #8B949E
+    FontColor #C9D1D9
+    FontSize 12
+    Thickness 1.5
+}
+
+' === Package/Container Styles ===
+skinparam package {
+    BackgroundColor #161B22
+    BorderColor #30363D
+    FontColor #58A6FF
+    FontSize 16
+    FontStyle bold
+}
+
+' === Component Styles ===
+skinparam component {
+    BackgroundColor #0D1117
+    BorderColor #58A6FF
+    FontColor #E6EDF3
+    BorderThickness 1.5
+}
+
+' === Actor Styles ===
+skinparam actor {
+    Style awesome
+    BackgroundColor #3FB950
+    BorderColor #3FB950
+    FontColor #0D1117
+}
+
+' === Database Styles ===
+skinparam database {
+    BackgroundColor #0D1117
+    BorderColor #D29922
+    FontColor #E6EDF3
+}
+
+' === Note Styles ===
+skinparam note {
+    BackgroundColor #21262D
+    BorderColor #F85149
+    FontColor #C9D1D9
+    FontSize 11
+}
+
+' === Usecase Styles ===
+skinparam usecase {
+    BackgroundColor #161B22
+    BorderColor #A371F7
+    FontColor #E6EDF3
+    BorderThickness 1.5
+}
+
+' === Sequence Styles ===
+skinparam sequence {
+    LifeLineBorderColor #30363D
+    LifeLineBackgroundColor #0D1117
+    ParticipantBackgroundColor #161B22
+    ParticipantBorderColor #58A6FF
+    ParticipantFontColor #E6EDF3
+    ParticipantPadding 20
+    
+    GroupBorderColor #30363D
+    GroupBackgroundColor #0D1117
+    GroupHeaderFontColor #58A6FF
+    
+    BoxBackgroundColor #0D1117
+    BoxBorderColor #30363D
+}
+
+' === Interface/Class Styles ===
+skinparam interface {
+    BackgroundColor #161B22
+    BorderColor #A371F7
+    FontColor #E6EDF3
+}
+
+skinparam class {
+    BackgroundColor #161B22
+    BorderColor #A371F7
+    FontColor #E6EDF3
+    AttributeFontColor #C9D1D9
+}
+
+' === Activity/State Styles ===
+skinparam activity {
+    BackgroundColor #161B22
+    BorderColor #58A6FF
+    BarColor #58A6FF
+    StartColor #3FB950
+    EndColor #F85149
+}
+
+' === Stereotype Styles ===
+skinparam stereotypeCBackgroundColor #58A6FF
+skinparam stereotypeIBackgroundColor #A371F7
+skinparam stereotypeSBackgroundColor #3FB950
+skinparam stereotypePBackgroundColor #D29922
+
+!else
+' Fallback (Light)
+skinparam DefaultFontColor #000000
+skinparam BackgroundColor #FFFFFF
+!endif

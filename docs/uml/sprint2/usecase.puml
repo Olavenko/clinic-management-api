@@ -1,0 +1,71 @@
+@startuml
+' -------------------------------------------------------
+' File: usecase.puml
+' -------------------------------------------------------
+' Purpose   : Use Case — Authentication & Authorization
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 2 — Authentication
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Use Case — Authentication & Authorization (Sprint 2)
+
+' === Header/Footer ===
+header Clinic Management System - Security Model
+footer Auth Module Documentation
+
+' === Layout Settings ===
+left to right direction
+
+' === Actors ===
+actor "<color:#E6EDF3><&person></color>\nAnonymous User" as GUEST << Human >>
+actor "<color:#3FB950><&person></color>\nAuthenticated User" as USER << Human >>
+actor "<color:#A371F7><&star></color>\nAdministrator" as ADMIN << Human >>
+
+' Inheritance: Admin and Patient are types of Authenticated Users
+ADMIN -up-|> USER
+
+' === System Boundary ===
+package "ClinicManagementAPI" #0D1117 {
+    
+    usecase "Register New Account" as UC_REG #161B22
+    usecase "Login to System" as UC_LOG #161B22
+    usecase "Logout / Revoke Session" as UC_OUT #161B22
+    usecase "Refresh Access Token" as UC_REF #161B22
+    
+    usecase "Assign User Roles" as UC_ROLE #161B22
+    usecase "Manage Security Tokens" as UC_TOK #161B22
+}
+
+' === Relationships (Process Flow) ===
+
+' (1-2) The Onboarding Entry Point
+GUEST --> UC_REG : " (1) Sign Up "
+GUEST --> UC_LOG : " (2) Credentials "
+
+' (3-4) Session Maintenance
+USER --> UC_REF : " (3) Keep Token Fresh "
+USER --> UC_OUT : " (4) End Session "
+
+' (5) Administrative Management
+ADMIN --> UC_ROLE : " (5) Promote User "
+
+' Internal System Dependencies
+UC_LOG ..> UC_TOK : << include >>
+UC_REF ..> UC_TOK : << include >>
+
+note bottom of UC_REF
+    Automatically triggered by Client
+    when JWT expires
+end note
+
+note bottom of UC_REG
+    New users are assigned
+    'Patient' role by default
+end note
+
+@enduml

@@ -36,7 +36,8 @@ ClinicManagementAPI/
 │   └── Integration/                  # Integration tests
 │
 ├── Roadmap/                          # Sprint checklists & planning docs
-├── docs/                             # Additional documentation
+├── docs/                             # Architecture & Documentation
+│   └── uml/                          # PlantUML diagrams (.puml) & SVG exports
 ├── .github/
 │   ├── workflows/build.yml           # CI pipeline
 │   └── dependabot.yml                # Automated dependency updates
@@ -47,6 +48,15 @@ ClinicManagementAPI/
 ├── Directory.Packages.props          # Central Package Management
 └── ClinicManagementAPI.slnx          # Solution file
 ```
+
+## Architecture & Diagrams
+
+Comprehensive UML documentation is maintained in the `docs/uml/` directory, created with PlantUML and a premium dark theme.
+
+- **Sprint 1**: Layered Architecture & CI Pipeline Component Diagram (`docs/uml/sprint1/`)
+- **Sprint 2**: Authentication Sequence, Use Case, and Class Diagrams (`docs/uml/sprint2/`)
+
+High-fidelity `.svg` vector images with built-in OpenIconic sprites are exported into the respective `exports/` subfolders for easy viewing. Learn how to generate or modify these diagrams by reading `docs/uml/Diagrams-Readme.md`.
 
 ## Prerequisites
 
@@ -89,10 +99,14 @@ The API will start at `https://localhost:5001` (or the port configured in `launc
 
 ## API Endpoints
 
-| Method | Endpoint           | Description                      |
-|--------|--------------------|----------------------------------|
-| `GET`  | `/health`          | Health check (API + database)    |
-| `GET`  | `/openapi/v1.json` | OpenAPI specification (dev only) |
+| Method | Endpoint               | Description                               |
+|--------|------------------------|-------------------------------------------|
+| `GET`  | `/health`              | Health check (API + database)             |
+| `GET`  | `/openapi/v1.json`     | OpenAPI specification (dev only)          |
+| `POST` | `/api/auth/register`   | Register a new user                       |
+| `POST` | `/api/auth/login`      | Login and receive JWT & Refresh Token     |
+| `POST` | `/api/auth/refresh`    | Refresh an expired JWT using refresh token|
+| `POST` | `/api/auth/logout`     | Logout and revoke refresh token           |
 
 > More endpoints will be added in upcoming sprints.
 
