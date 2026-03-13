@@ -1,0 +1,95 @@
+@startuml
+' -------------------------------------------------------
+' File: component.puml
+' -------------------------------------------------------
+' Purpose   : Component — Layered Architecture & CI Pipeline
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 1 — Project Setup & Foundation
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Component — Layered Architecture & CI Pipeline (Sprint 1)
+
+' === Header/Footer ===
+header Clinic Management System - Architecture Overview
+footer Architecture Overview Diagram
+
+' === Layout Settings ===
+left to right direction
+skinparam nodesep 50
+skinparam ranksep 50
+
+' === External/CI Layer ===
+cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
+    component "<color:#58A6FF><&cog></color> GitHub Actions" as CI << CI/CD >> #0D1117
+    note bottom of CI: Build, Lint, Test\n(dotnet build/test)
+}
+
+' === Application System ===
+package "ClinicManagementAPI System" #0D1117 {
+
+    package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
+        component "<color:#F85149><&shield></color> AuthEndpoints" as ENDP << Controller >>
+        component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
+        component "ValidationFilter" as FILT << ActionFilter >>
+    }
+
+    package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {
+        component "<color:#3FB950><&cog></color> AuthService" as SVC << Service >>
+        interface "IAuthService" as INTF << Interface >>
+        
+        folder "Data" as DATA_FOLDER {
+            component "<color:#D29922><&hard-drive></color> AppDbContext" as DATA << Persistence >>
+            component "DTOs" as DTO
+            component "Models" as MOD
+        }
+    }
+
+    package "Tests Project" as TESTS << Layer >> {
+        component "Unit Tests" as UT << xUnit >>
+        component "Integration" as IT << xUnit >>
+    }
+}
+
+' === Infrastructure Layer ===
+node "External Infrastructure" #161B22 {
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << Database >>
+    component "<color:#A371F7><&shield></color> ASP.NET Core\nIdentity" as IDENTITY << Package >>
+}
+
+' === Presentation Layer (External) ===
+actor "Web/Mobile Client" as CLIENT
+
+' === Relationships ===
+
+' [1-2] CI flow
+CI -[#39C5CF]down-> API : " (1) Deploys to "
+CI -[#3FB950]down-> TESTS : " (2) Executes "
+
+' [3-6] Request Entry & Validation
+CLIENT -[#58A6FF]right-> ENDP : " (3) HTTP Requests "
+ENDP -[#58A6FF]down-> FILT : " (4) Filters "
+FILT -[#58A6FF]right-> DTO : " (5) Validates "
+ENDP -[#58A6FF]down-> DTO : " (6) Maps "
+
+' [7-9] Business Logic
+ENDP -[#58A6FF]down-> INTF : " (7) Injects "
+SVC .[#3FB950]left.|> INTF : " (8) Implements "
+MW -[#58A6FF]down-> SVC : " (9) Authorizes via "
+
+' [10-13] Data & Persistence
+SVC -[#3FB950]down-> DATA : " (10) Persists via "
+SVC -[#3FB950]down-> MOD : " (11) Manipulates "
+DATA -[#A371F7]down-> DB : " (12) EF Core 10 "
+DATA -[#A371F7]right-> IDENTITY : " (13) Stores Users "
+
+' [14-15] Quality Assurance
+UT .[#F85149]up.> SVC : " (14) Mocks & Tests "
+IT .[#F85149]up.> ENDP : " (15) WebApplicationFactory "
+
+@enduml
+
