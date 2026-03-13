@@ -93,7 +93,6 @@ namespace ClinicManagementAPI.Core.Migrations
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
-
             modelBuilder.Entity("ClinicManagementAPI.Core.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -128,7 +127,6 @@ namespace ClinicManagementAPI.Core.Migrations
 
                     b.ToTable("RefreshTokens");
                 });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
