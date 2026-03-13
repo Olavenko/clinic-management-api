@@ -432,3 +432,7 @@ docker-compose.override.yml
 # Gemini / AI agent files
 .gemini/
 .agents/
+
+# Test Coverage Reports
+coveragereport/
+**/TestResults/

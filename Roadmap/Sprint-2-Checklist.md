@@ -443,7 +443,7 @@ New token each refresh   → Old token dies, stolen token is useless ✅
 **Goal:** 70%+ coverage on Auth logic — catch bugs before they reach production
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/AuthServiceTests.cs
+[✅] Create Unit Tests in ClinicManagementAPI.Tests/Unit/AuthServiceTests.cs
     Test cases:
     - RegisterAsync_WithValidData_ReturnsSuccessResult
     - RegisterAsync_WithExistingEmail_ReturnsFailureResult
@@ -454,7 +454,7 @@ New token each refresh   → Old token dies, stolen token is useless ✅
     - RefreshTokenAsync_WithExpiredToken_ReturnsFailureResult
     - RevokeTokenAsync_WithValidToken_ReturnsSuccessResult
 
-[ ] Create Integration Tests in Tests/Integration/AuthEndpointsTests.cs
+[✅] Create Integration Tests in ClinicManagementAPI.Tests/Integration/AuthEndpointsTests.cs
     Test cases:
     - POST /api/auth/register → 201 with valid data
     - POST /api/auth/register → 400 with missing fields
@@ -469,10 +469,10 @@ New token each refresh   → Old token dies, stolen token is useless ✅
     - POST /api/auth/logout   → 204 on success
     - POST /api/auth/logout   → 401 without JWT (unauthorized)
 
-[ ] Run all tests and verify they pass
+[✅] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[✅] Check coverage
     Command: dotnet test --collect:"XPlat Code Coverage"
 ```
 
