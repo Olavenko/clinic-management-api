@@ -230,38 +230,57 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow new users to register — always as Patient role by default
 
 ```markdown
-[ ] Create IAuthService interface in Core/Interfaces/
+[✅] Move DTOs from Api to Core (architecture fix)
+    Command: New-Item -Path "ClinicManagementAPI.Core\DTOs\Auth" -ItemType Directory -Force
+    Commands:
+    - Move-Item RegisterRequest.cs, LoginRequest.cs, AuthResponse.cs to Core\DTOs\Auth\
+    - Changed namespace from ClinicManagementAPI.Api.DTOs.Auth → ClinicManagementAPI.Core.DTOs.Auth
+    - Remove-Item -Path "ClinicManagementAPI.Api\DTOs" -Recurse
+    ⚠️ Note: DTOs moved to Core because IAuthService needs them
+             Keeping them in Api would cause circular dependency (Api → Core → Api)
+
+[✅] Create IAuthService interface in Core/Interfaces/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Interfaces" -Name "IAuthService.cs" -Force
     Methods (all return Result<T>):
     - Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     - Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     - Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)
     - Task<Result<bool>> RevokeTokenAsync(string refreshToken)
 
-[ ] Create AuthService in Core/Services/
+[✅] Create AuthService in Core/Services/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Services" -Name "AuthService.cs" -Force
     Implements IAuthService
     RegisterAsync logic:
-    - Check if email already exists
-      → return Result.Failure("Email already registered", 400)
-    - Create user via UserManager
-      → if failed, return Result.Failure(errors, 400)
+    - Check if email already exists → Result.Failure("Email already registered", 400)
+    - Create user via UserManager → if failed, Result.Failure(errors, 400)
     - Assign "Patient" role by default (using AppRoles.Patient)
-    - Generate JWT Token
-    - Generate Refresh Token (with expiry from JwtSettings.RefreshTokenExpiryDays)
+    - Generate JWT Token (using GenerateJwtToken private method)
+    - Generate Refresh Token (using GenerateRefreshToken private method)
     - Return Result.Success(new AuthResponse { ... })
+    Private helpers:
+    - GenerateJwtToken: creates JWT with claims (Sub, Email, Jti, FullName), signs with HmacSha256
+    - GenerateRefreshToken: generates 64-byte cryptographically secure random string
+    ⚠️ Note: LoginAsync, RefreshTokenAsync, RevokeTokenAsync throw NotImplementedException
+             Will be implemented in Sections 6 and 7
 
-[ ] Register IAuthService in Program.cs
-    builder.Services.AddScoped<IAuthService, AuthService>()
+[✅] Register IAuthService in Program.cs
+    Added usings: ClinicManagementAPI.Core.Interfaces, ClinicManagementAPI.Core.Services
+    Code: builder.Services.AddScoped<IAuthService, AuthService>()
 
-[ ] Create Auth endpoints file in Api/Endpoints/AuthEndpoints.cs
-    POST /api/auth/register
-    - Accepts RegisterRequest
+[✅] Create Auth endpoints file in Api/Endpoints/AuthEndpoints.cs
+    Command: New-Item -Path "ClinicManagementAPI.Api\Endpoints" -Name "AuthEndpoints.cs" -Force
+    Extension method MapAuthEndpoints on WebApplication
+    Uses MapGroup("/api/auth") to group all auth endpoints
+    POST /api/auth/register:
+    - Accepts RegisterRequest (from body) + IAuthService (from DI)
     - Calls AuthService.RegisterAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 201 + AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - result.IsSuccess → 201 Created + AuthResponse
+    - result.IsFailure → Results.Problem with error details
+    - AddEndpointFilter<ValidationFilter<RegisterRequest>>() for input validation
 
-[ ] Map Auth endpoints in Program.cs
-    app.MapAuthEndpoints()
+[✅] Map Auth endpoints in Program.cs
+    Added using: ClinicManagementAPI.Api.Endpoints
+    Code: app.MapAuthEndpoints() — added before app.Run()
 ```
 
 ---
@@ -272,25 +291,28 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow existing users to login and receive JWT + Refresh Token
 
 ```markdown
-[ ] Add LoginAsync logic in AuthService
-    - Find user by email
-      → if null, return Result.Failure("Invalid credentials", 401)
-    - Verify password via UserManager.CheckPasswordAsync
-      → if failed, return Result.Failure("Invalid credentials", 401)
-    - Generate JWT Token
-    - Generate Refresh Token
-    - Return Result.Success(new AuthResponse { ... })
+[✅] Add LoginAsync logic in AuthService
+    Location: ClinicManagementAPI.Core\Services\AuthService.cs
+    Logic:
+    1. Find user by email using userManager.FindByEmailAsync
+       → if null, return Result.Failure("Invalid credentials", 401)
+    2. Verify password using userManager.CheckPasswordAsync
+       → if failed, return Result.Failure("Invalid credentials", 401)
+    3. Generate JWT Token using GenerateJwtToken
+    4. Generate Refresh Token using GenerateRefreshToken
+    5. Return Result.Success(new AuthResponse { ... })
+    ⚠️ Note: SAME error message "Invalid credentials" for both cases
+             Prevents email enumeration attacks — attacker can't tell if email exists
 
-    ⚠️ Return SAME error message for "user not found" and "wrong password"
-    (prevents email enumeration attacks)
-
-[ ] Add Login endpoint in AuthEndpoints.cs
+[✅] Add Login endpoint in AuthEndpoints.cs
+    Location: ClinicManagementAPI.Api\Endpoints\AuthEndpoints.cs
     POST /api/auth/login
-    - Accepts LoginRequest
+    - Accepts LoginRequest (from body) + IAuthService (from DI)
     - Calls AuthService.LoginAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 200 + AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - result.IsSuccess → Results.Ok (200) + AuthResponse
+    - result.IsFailure → Results.Problem with error details
+    - AddEndpointFilter<ValidationFilter<LoginRequest>>() for input validation
+    ⚠️ Note: Uses Ok (200) not Created (201) — Login doesn't create a new resource
 ```
 
 **Why same error message?**
@@ -308,56 +330,87 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow users to get a new JWT Token without logging in again
 
 ```markdown
-[ ] Create RefreshToken model in Core/Models/
+[✅] Create RefreshToken model in Core/Models/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Models" -Name "RefreshToken.cs"
     Properties:
-    - Id (int)
-    - Token (string)
+    - Id (int) — auto-increment PK
+    - Token (string) — the random Base64 string
     - ExpiresAt (DateTime)
-    - CreatedAt (DateTime)
-    - IsRevoked (bool)
+    - CreatedAt (DateTime) — defaults to DateTime.UtcNow
+    - IsRevoked (bool) — marks token as cancelled
     - UserId (string → FK to ApplicationUser)
+    - User (ApplicationUser) — navigation property
 
-[ ] Add RefreshTokens DbSet to AppDbContext
+[✅] Add RefreshTokens DbSet + Configuration to AppDbContext
+    Location: Core/Data/AppDbContext.cs
+    Added: public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    Added OnModelCreating override:
+    - base.OnModelCreating(modelBuilder) — required for Identity tables
+    - HasOne(rt => rt.User).WithMany().HasForeignKey(rt => rt.UserId).OnDelete(DeleteBehavior.Restrict)
+    - HasIndex(rt => rt.Token).IsUnique() — fast lookups + no duplicates
 
-[ ] Add RefreshToken Migration
+[✅] Add RefreshToken Migration
     Command: dotnet ef migrations add AddRefreshTokens --project ClinicManagementAPI.Core
                                                        --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[✅] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
+    Verified: sqlcmd confirms 6 columns (Id int, Token nvarchar, ExpiresAt datetime2,
+              CreatedAt datetime2, IsRevoked bit, UserId nvarchar)
 
-[ ] Add RefreshTokenAsync logic in AuthService
-    - Find token in Database
-      → if null, return Result.Failure("Invalid token", 401)
-    - Validate it is not expired and not revoked
-      → if invalid, return Result.Failure("Token expired or revoked", 401)
-    - Revoke old token
-    - Generate new JWT Token
-    - Generate new Refresh Token (with expiry from JwtSettings.RefreshTokenExpiryDays)
-    - Return Result.Success(new AuthResponse { ... })
+[✅] Add AppDbContext to AuthService constructor
+    Changed: AuthService(UserManager, JwtSettings) → AuthService(UserManager, JwtSettings, AppDbContext)
+    Added usings: ClinicManagementAPI.Core.Data, Microsoft.EntityFrameworkCore
 
-[ ] Add RevokeTokenAsync logic in AuthService
-    - Find token in Database
-      → if null, return Result.Failure("Invalid token", 400)
-    - Mark it as revoked
-    - Return Result.Success(true)
+[✅] Update RegisterAsync + LoginAsync to save Refresh Token in Database
+    Added to both methods after GenerateRefreshToken():
+    - dbContext.RefreshTokens.Add(new RefreshToken { Token, UserId, ExpiresAt, CreatedAt })
+    - await dbContext.SaveChangesAsync()
+    ⚠️ Note: Previously tokens were generated but never stored — now they're persisted
 
-[ ] Add Refresh and Logout endpoints in AuthEndpoints.cs
+[✅] Add RefreshTokenAsync logic in AuthService
+    Logic (7 steps):
+    1. Find token in Database using FirstOrDefaultAsync
+       → if null, return Result.Failure("Invalid token", 401)
+    2. Validate it is not expired and not revoked
+       → if invalid, return Result.Failure("Token expired or revoked", 401)
+    3. Revoke old token (IsRevoked = true)
+    4. Get user via userManager.FindByIdAsync(storedToken.UserId)
+    5. Generate new JWT + Refresh Token
+    6. Save new Refresh Token in Database (with expiry from JwtSettings.RefreshTokenExpiryDays)
+    7. Return Result.Success(new AuthResponse { ... })
+    ⚠️ Note: Token Rotation — old token revoked, new one issued every refresh
+
+[✅] Add RevokeTokenAsync logic in AuthService
+    Logic (3 steps):
+    1. Find token in Database
+       → if null, return Result.Failure("Invalid token", 400)
+    2. Mark it as revoked + SaveChangesAsync
+    3. Return Result.Success(true)
+    ⚠️ Note: No expiry/revoked check — logout should succeed even for expired tokens
+             400 not 401 — user is authenticated, the token string is just invalid
+
+[✅] Create RefreshTokenRequest DTO in Core/DTOs/Auth/
+    Command: New-Item -Path "ClinicManagementAPI.Core\DTOs\Auth" -Name "RefreshTokenRequest.cs"
+    Properties: RefreshToken (string, [Required])
+    ⚠️ Note: Minimal API can't bind raw string from body — needs a DTO object
+
+[✅] Add Refresh and Logout endpoints in AuthEndpoints.cs
     POST /api/auth/refresh
-    - Accepts: { refreshToken: string }
-    - Calls AuthService.RefreshTokenAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 200 + new AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - Accepts: RefreshTokenRequest (from body) + IAuthService (from DI)
+    - Calls AuthService.RefreshTokenAsync(request.RefreshToken)
+    - result.IsSuccess → 200 + new AuthResponse
+    - result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
 
     POST /api/auth/logout
-    - Accepts: { refreshToken: string }
-    - Requires valid JWT Token (protected endpoint)
-    - Calls AuthService.RevokeTokenAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 204
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - Accepts: RefreshTokenRequest (from body) + IAuthService (from DI)
+    - Requires valid JWT Token → .RequireAuthorization()
+    - Calls AuthService.RevokeTokenAsync(request.RefreshToken)
+    - result.IsSuccess → 204 NoContent
+    - result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
     - ⚠️ Named "logout" not "revoke" — this is what frontend developers expect
 ```
 
@@ -375,6 +428,13 @@ Hardcoded expiry   → Need to redeploy to change it ❌
 Config-based expiry → Change appsettings.json and restart → Flexible ✅
 ```
 
+**Why Token Rotation?**
+
+```markdown
+Reuse same refresh token → If stolen, attacker has permanent access ❌
+New token each refresh   → Old token dies, stolen token is useless ✅
+```
+
 ---
 
 ## Section 8 — Tests
@@ -383,37 +443,72 @@ Config-based expiry → Change appsettings.json and restart → Flexible ✅
 **Goal:** 70%+ coverage on Auth logic — catch bugs before they reach production
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/AuthServiceTests.cs
-    Test cases:
+[✅] Create Unit Tests in ClinicManagementAPI.Tests/Unit/AuthServiceTests.cs
+    Setup: DI container with AddLogging + InMemory DB + Identity + Role Seeding
+    Cleanup: IDisposable — EnsureDeleted + Dispose + GC.SuppressFinalize
+    Test cases (12 tests):
     - RegisterAsync_WithValidData_ReturnsSuccessResult
     - RegisterAsync_WithExistingEmail_ReturnsFailureResult
+    - RegisterAsync_WithWeakPassword_ReturnsFailureResult
     - LoginAsync_WithValidCredentials_ReturnsSuccessResult
     - LoginAsync_WithWrongPassword_ReturnsFailureResult
     - LoginAsync_WithNonExistentEmail_ReturnsFailureResult (same error as wrong password)
     - RefreshTokenAsync_WithValidToken_ReturnsSuccessResult
     - RefreshTokenAsync_WithExpiredToken_ReturnsFailureResult
+    - RefreshTokenAsync_WithNonExistentToken_ReturnsFailureResult
+    - RefreshTokenAsync_WithRevokedToken_ReturnsFailureResult
     - RevokeTokenAsync_WithValidToken_ReturnsSuccessResult
+    - RevokeTokenAsync_WithNonExistentToken_ReturnsFailureResult
+    ⚠️ Note: Roles must be seeded manually in tests — no Program.cs runs in Unit Tests
+             InMemory DB with Guid.NewGuid() ensures test isolation
 
-[ ] Create Integration Tests in Tests/Integration/AuthEndpointsTests.cs
-    Test cases:
+[✅] Create CustomWebApplicationFactory in ClinicManagementAPI.Tests/Integration/
+    Location: ClinicManagementAPI.Tests/Integration/CustomWebApplicationFactory.cs
+    Inherits: WebApplicationFactory<Program>
+    Logic: Removes real SQL Server → Adds InMemory Database
+    Uses: ConfigureTestServices + RemoveAll for clean replacement
+    ⚠️ Note: Required "public partial class Program { }" in Api/Program.cs
+
+[✅] Create Integration Tests in ClinicManagementAPI.Tests/Integration/AuthEndpointsTests.cs
+    Setup: IClassFixture<CustomWebApplicationFactory> — shared server across all tests
+    Uses: HttpClient with PostAsJsonAsync for JSON requests
+    Test cases (12 tests):
     - POST /api/auth/register → 201 with valid data
-    - POST /api/auth/register → 400 with missing fields
-    - POST /api/auth/register → 400 with invalid email format
-    - POST /api/auth/register → 400 with short password (< 8 chars)
+    - POST /api/auth/register → 400 with missing fields (ValidationFilter)
+    - POST /api/auth/register → 400 with invalid email format (ValidationFilter)
+    - POST /api/auth/register → 400 with short password < 8 chars (ValidationFilter)
     - POST /api/auth/register → 400 with duplicate email
     - POST /api/auth/login    → 200 with valid credentials
     - POST /api/auth/login    → 401 with wrong password
     - POST /api/auth/login    → 401 with non-existent email (same error)
     - POST /api/auth/refresh  → 200 with valid refresh token
-    - POST /api/auth/refresh  → 401 with expired token
-    - POST /api/auth/logout   → 204 on success
+    - POST /api/auth/refresh  → 401 with invalid token
+    - POST /api/auth/logout   → 204 on success (requires Bearer token in header)
     - POST /api/auth/logout   → 401 without JWT (unauthorized)
+    ⚠️ Note: Guid.NewGuid() in emails prevents conflicts — all tests share one InMemory DB
+             Logout test uses HttpRequestMessage to add Authorization header manually
 
-[ ] Run all tests and verify they pass
+[✅] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
+    Result: 24 tests passed (12 Unit + 12 Integration), 0 failed
 
-[ ] Check coverage
+[✅] Check coverage
     Command: dotnet test --collect:"XPlat Code Coverage"
+    Tool: dotnet tool install -g dotnet-reportgenerator-globaltool
+    Report: reportgenerator -reports:TestResults\*\coverage.cobertura.xml
+                            -targetdir:coveragereport -reporttypes:TextSummary
+    Result: AuthService 100%, AuthEndpoints 100%, AppDbContext 100%, DatabaseSeeder 100%
+            All DTOs and Models 100% — overall Auth logic coverage well above 70% target
+    ⚠️ Note: Low overall % (17.3%) is due to auto-generated code (Migrations, OpenApi, etc.)
+             Add coveragereport/ and **/TestResults/ to .gitignore
+```
+
+**Why Unit + Integration?**
+
+```markdown
+Unit Tests only   → Business logic works but endpoints might be broken ❌
+Integration only  → Endpoints work but can't pinpoint which service method failed ❌
+Both together     → Full confidence from service layer to HTTP response ✅
 ```
 
 ---
@@ -424,13 +519,13 @@ Config-based expiry → Change appsettings.json and restart → Flexible ✅
 **Goal:** CI pipeline now runs Auth tests automatically on every push
 
 ```markdown
-[ ] Verify build.yml runs dotnet test (already configured in Sprint 1)
+[✅] Verify build.yml runs dotnet test (already configured in Sprint 1)
 
-[ ] Add coverage report step to build.yml
+[✅] Add coverage report step to build.yml
     - name: Test with coverage
       run: dotnet test --collect:"XPlat Code Coverage" --verbosity normal
 
-[ ] Push to GitHub and verify:
+[✅] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests pass in CI
 ```

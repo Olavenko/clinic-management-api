@@ -1,4 +1,4 @@
-﻿using ClinicManagementAPI.Api.Filters;
+using ClinicManagementAPI.Api.Filters;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 
@@ -10,8 +10,7 @@ public static class AuthEndpoints
     public static void MapAuthEndpoints(this WebApplication app)
     {
         // Group all auth endpoints under /api/auth
-        var group = app.MapGroup("/api/auth")
-            .WithTags("Auth");
+        var group = app.MapGroup("/api/auth").WithTags("Auth");
 
         // POST /api/auth/register
         group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>
@@ -26,5 +25,48 @@ public static class AuthEndpoints
                     statusCode: result.StatusCode);
         })
         .AddEndpointFilter<ValidationFilter<RegisterRequest>>();
+
+        // POST /api/auth/login
+        group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
+        {
+            var result = await authService.LoginAsync(request);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.Problem(
+                    title: "Login failed",
+                    detail: result.Error,
+                    statusCode: result.StatusCode);
+        })
+        .AddEndpointFilter<ValidationFilter<LoginRequest>>();
+
+        // POST /api/auth/refresh
+        group.MapPost("/refresh", async (RefreshTokenRequest request, IAuthService authService) =>
+        {
+            var result = await authService.RefreshTokenAsync(request.RefreshToken);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.Problem(
+                    title: "Refresh failed",
+                    detail: result.Error,
+                    statusCode: result.StatusCode);
+        })
+        .AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>();
+
+        // POST /api/auth/logout
+        group.MapPost("/logout", async (RefreshTokenRequest request, IAuthService authService) =>
+        {
+            var result = await authService.RevokeTokenAsync(request.RefreshToken);
+
+            return result.IsSuccess
+                ? Results.NoContent()
+                : Results.Problem(
+                    title: "Logout failed",
+                    detail: result.Error,
+                    statusCode: result.StatusCode);
+        })
+        .AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
+        .RequireAuthorization();
     }
 }

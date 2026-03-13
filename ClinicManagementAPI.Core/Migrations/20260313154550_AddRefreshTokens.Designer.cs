@@ -4,6 +4,7 @@ using ClinicManagementAPI.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinicManagementAPI.Core.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313154550_AddRefreshTokens")]
+    partial class AddRefreshTokens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -93,6 +96,7 @@ namespace ClinicManagementAPI.Core.Migrations
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
+
             modelBuilder.Entity("ClinicManagementAPI.Core.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -127,6 +131,7 @@ namespace ClinicManagementAPI.Core.Migrations
 
                     b.ToTable("RefreshTokens");
                 });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")

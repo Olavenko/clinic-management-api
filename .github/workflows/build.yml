@@ -23,5 +23,5 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
+      - name: Test with coverage
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --verbosity normal

@@ -6,26 +6,25 @@ using System.Text;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 using ClinicManagementAPI.Core.Models;
+using ClinicManagementAPI.Core.Data;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagementAPI.Core.Services;
 
-public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings jwtSettings) : IAuthService
+public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings jwtSettings, AppDbContext dbContext) : IAuthService
 {
-
     // Register a new user — always assigned Patient role by default
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
-        // Check if email is already taken
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
         {
             return Result<AuthResponse>.Failure("Email already registered", 400);
         }
 
-        // Create new user object
         var user = new ApplicationUser
         {
             FullName = request.FullName,
@@ -33,7 +32,6 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             UserName = request.Email
         };
 
-        // Save user to database with hashed password
         var createResult = await userManager.CreateAsync(user, request.Password);
         if (!createResult.Succeeded)
         {
@@ -41,12 +39,20 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             return Result<AuthResponse>.Failure(errors, 400);
         }
 
-        // Assign default role
         await userManager.AddToRoleAsync(user, AppRoles.Patient);
 
-        // Generate tokens
         var accessToken = GenerateJwtToken(user);
         var refreshToken = GenerateRefreshToken();
+
+        dbContext.RefreshTokens.Add(new RefreshToken
+        {
+            Token = refreshToken,
+            UserId = user.Id,
+            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync();
 
         return Result<AuthResponse>.Success(new AuthResponse
         {
@@ -56,17 +62,99 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         });
     }
 
-    // Will be implemented in Section 6
-    public Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
-        => throw new NotImplementedException();
+    // Login an existing user
+    public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
+    {
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return Result<AuthResponse>.Failure("Invalid credentials", 401);
+        }
 
-    // Will be implemented in Section 7
-    public Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)
-        => throw new NotImplementedException();
+        var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
+        {
+            return Result<AuthResponse>.Failure("Invalid credentials", 401);
+        }
 
-    // Will be implemented in Section 7
-    public Task<Result<bool>> RevokeTokenAsync(string refreshToken)
-        => throw new NotImplementedException();
+        var accessToken = GenerateJwtToken(user);
+        var refreshToken = GenerateRefreshToken();
+
+        dbContext.RefreshTokens.Add(new RefreshToken
+        {
+            Token = refreshToken,
+            UserId = user.Id,
+            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        return Result<AuthResponse>.Success(new AuthResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+        });
+    }
+
+    // Refresh an expired JWT using a valid refresh token
+    public async Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)
+    {
+        var storedToken = await dbContext.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+        if (storedToken is null)
+        {
+            return Result<AuthResponse>.Failure("Invalid token", 401);
+        }
+
+        if (storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return Result<AuthResponse>.Failure("Token expired or revoked", 401);
+        }
+
+        storedToken.IsRevoked = true;
+
+        var user = await userManager.FindByIdAsync(storedToken.UserId);
+
+        var newAccessToken = GenerateJwtToken(user!);
+        var newRefreshToken = GenerateRefreshToken();
+
+        dbContext.RefreshTokens.Add(new RefreshToken
+        {
+            Token = newRefreshToken,
+            UserId = storedToken.UserId,
+            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        return Result<AuthResponse>.Success(new AuthResponse
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+        });
+    }
+
+    // Revoke a refresh token (logout)
+    public async Task<Result<bool>> RevokeTokenAsync(string refreshToken)
+    {
+        var storedToken = await dbContext.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+        if (storedToken is null)
+        {
+            return Result<bool>.Failure("Invalid token", 400);
+        }
+
+        storedToken.IsRevoked = true;
+        await dbContext.SaveChangesAsync();
+
+        return Result<bool>.Success(true);
+    }
 
     // Generate JWT token with user claims
     private string GenerateJwtToken(ApplicationUser user)
