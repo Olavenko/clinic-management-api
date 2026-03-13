@@ -1,4 +1,4 @@
-# Sprint 2 — Authentication (JWT + Refresh Token + Roles Setup)
+﻿# Sprint 2 — Authentication (JWT + Refresh Token + Roles Setup)
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -230,38 +230,57 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow new users to register — always as Patient role by default
 
 ```markdown
-[ ] Create IAuthService interface in Core/Interfaces/
+[✅] Move DTOs from Api to Core (architecture fix)
+    Command: New-Item -Path "ClinicManagementAPI.Core\DTOs\Auth" -ItemType Directory -Force
+    Commands:
+    - Move-Item RegisterRequest.cs, LoginRequest.cs, AuthResponse.cs to Core\DTOs\Auth\
+    - Changed namespace from ClinicManagementAPI.Api.DTOs.Auth → ClinicManagementAPI.Core.DTOs.Auth
+    - Remove-Item -Path "ClinicManagementAPI.Api\DTOs" -Recurse
+    ⚠️ Note: DTOs moved to Core because IAuthService needs them
+             Keeping them in Api would cause circular dependency (Api → Core → Api)
+
+[✅] Create IAuthService interface in Core/Interfaces/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Interfaces" -Name "IAuthService.cs" -Force
     Methods (all return Result<T>):
     - Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     - Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     - Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)
     - Task<Result<bool>> RevokeTokenAsync(string refreshToken)
 
-[ ] Create AuthService in Core/Services/
+[✅] Create AuthService in Core/Services/
+    Command: New-Item -Path "ClinicManagementAPI.Core\Services" -Name "AuthService.cs" -Force
     Implements IAuthService
     RegisterAsync logic:
-    - Check if email already exists
-      → return Result.Failure("Email already registered", 400)
-    - Create user via UserManager
-      → if failed, return Result.Failure(errors, 400)
+    - Check if email already exists → Result.Failure("Email already registered", 400)
+    - Create user via UserManager → if failed, Result.Failure(errors, 400)
     - Assign "Patient" role by default (using AppRoles.Patient)
-    - Generate JWT Token
-    - Generate Refresh Token (with expiry from JwtSettings.RefreshTokenExpiryDays)
+    - Generate JWT Token (using GenerateJwtToken private method)
+    - Generate Refresh Token (using GenerateRefreshToken private method)
     - Return Result.Success(new AuthResponse { ... })
+    Private helpers:
+    - GenerateJwtToken: creates JWT with claims (Sub, Email, Jti, FullName), signs with HmacSha256
+    - GenerateRefreshToken: generates 64-byte cryptographically secure random string
+    ⚠️ Note: LoginAsync, RefreshTokenAsync, RevokeTokenAsync throw NotImplementedException
+             Will be implemented in Sections 6 and 7
 
-[ ] Register IAuthService in Program.cs
-    builder.Services.AddScoped<IAuthService, AuthService>()
+[✅] Register IAuthService in Program.cs
+    Added usings: ClinicManagementAPI.Core.Interfaces, ClinicManagementAPI.Core.Services
+    Code: builder.Services.AddScoped<IAuthService, AuthService>()
 
-[ ] Create Auth endpoints file in Api/Endpoints/AuthEndpoints.cs
-    POST /api/auth/register
-    - Accepts RegisterRequest
+[✅] Create Auth endpoints file in Api/Endpoints/AuthEndpoints.cs
+    Command: New-Item -Path "ClinicManagementAPI.Api\Endpoints" -Name "AuthEndpoints.cs" -Force
+    Extension method MapAuthEndpoints on WebApplication
+    Uses MapGroup("/api/auth") to group all auth endpoints
+    POST /api/auth/register:
+    - Accepts RegisterRequest (from body) + IAuthService (from DI)
     - Calls AuthService.RegisterAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 201 + AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - result.IsSuccess → 201 Created + AuthResponse
+    - result.IsFailure → Results.Problem with error details
+    - AddEndpointFilter<ValidationFilter<RegisterRequest>>() for input validation
 
-[ ] Map Auth endpoints in Program.cs
-    app.MapAuthEndpoints()
+[✅] Map Auth endpoints in Program.cs
+    Added using: ClinicManagementAPI.Api.Endpoints
+    Code: app.MapAuthEndpoints() — added before app.Run()
 ```
 
 ---
@@ -272,25 +291,28 @@ Default role = Patient    → Only Admin promotes users    → Secure by default
 **Goal:** Allow existing users to login and receive JWT + Refresh Token
 
 ```markdown
-[ ] Add LoginAsync logic in AuthService
-    - Find user by email
-      → if null, return Result.Failure("Invalid credentials", 401)
-    - Verify password via UserManager.CheckPasswordAsync
-      → if failed, return Result.Failure("Invalid credentials", 401)
-    - Generate JWT Token
-    - Generate Refresh Token
-    - Return Result.Success(new AuthResponse { ... })
+[✅] Add LoginAsync logic in AuthService
+    Location: ClinicManagementAPI.Core\Services\AuthService.cs
+    Logic:
+    1. Find user by email using userManager.FindByEmailAsync
+       → if null, return Result.Failure("Invalid credentials", 401)
+    2. Verify password using userManager.CheckPasswordAsync
+       → if failed, return Result.Failure("Invalid credentials", 401)
+    3. Generate JWT Token using GenerateJwtToken
+    4. Generate Refresh Token using GenerateRefreshToken
+    5. Return Result.Success(new AuthResponse { ... })
+    ⚠️ Note: SAME error message "Invalid credentials" for both cases
+             Prevents email enumeration attacks — attacker can't tell if email exists
 
-    ⚠️ Return SAME error message for "user not found" and "wrong password"
-    (prevents email enumeration attacks)
-
-[ ] Add Login endpoint in AuthEndpoints.cs
+[✅] Add Login endpoint in AuthEndpoints.cs
+    Location: ClinicManagementAPI.Api\Endpoints\AuthEndpoints.cs
     POST /api/auth/login
-    - Accepts LoginRequest
+    - Accepts LoginRequest (from body) + IAuthService (from DI)
     - Calls AuthService.LoginAsync()
-    - Maps Result to HTTP response:
-      result.IsSuccess → 200 + AuthResponse
-      result.IsFailure → Results.Problem(result.Error, statusCode: result.StatusCode)
+    - result.IsSuccess → Results.Ok (200) + AuthResponse
+    - result.IsFailure → Results.Problem with error details
+    - AddEndpointFilter<ValidationFilter<LoginRequest>>() for input validation
+    ⚠️ Note: Uses Ok (200) not Created (201) — Login doesn't create a new resource
 ```
 
 **Why same error message?**

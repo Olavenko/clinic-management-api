@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -56,9 +56,35 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         });
     }
 
-    // Will be implemented in Section 6
-    public Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
-        => throw new NotImplementedException();
+    // Login an existing user
+    public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
+    {
+        // Find user by email
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return Result<AuthResponse>.Failure("Invalid credentials", 401);
+        }
+
+        // Check if password is valid
+        var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
+        {
+            return Result<AuthResponse>.Failure("Invalid credentials", 401);
+        }
+
+        // Generate tokens
+        var accessToken = GenerateJwtToken(user);
+        var refreshToken = GenerateRefreshToken();
+
+        // Return success response
+        return Result<AuthResponse>.Success(new AuthResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+        });
+    }
 
     // Will be implemented in Section 7
     public Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)

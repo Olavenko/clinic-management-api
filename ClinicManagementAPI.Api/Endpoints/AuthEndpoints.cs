@@ -26,5 +26,19 @@ public static class AuthEndpoints
                     statusCode: result.StatusCode);
         })
         .AddEndpointFilter<ValidationFilter<RegisterRequest>>();
+
+        // POST /api/auth/login
+        group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
+        {
+            var result = await authService.LoginAsync(request);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.Problem(
+                    title: "Login failed",
+                    detail: result.Error,
+                    statusCode: result.StatusCode);
+        })
+        .AddEndpointFilter<ValidationFilter<LoginRequest>>();
     }
 }
