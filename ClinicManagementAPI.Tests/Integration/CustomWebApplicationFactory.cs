@@ -1,14 +1,17 @@
 ﻿using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.Models;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.Tokens;
+
+using System.Text;
 
 namespace ClinicManagementAPI.Tests.Integration;
 
@@ -16,22 +19,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Add test JWT settings — replaces User Secrets in CI
-        builder.ConfigureAppConfiguration((context, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Jwt:Key"] = "ThisIsATestSecretKeyThatIsAtLeast32Characters!",
-                ["Jwt:Issuer"] = "TestIssuer",
-                ["Jwt:Audience"] = "TestAudience",
-                ["Jwt:ExpiryMinutes"] = "60",
-                ["Jwt:RefreshTokenExpiryDays"] = "7"
-            });
-        });
-
         builder.ConfigureTestServices(services =>
         {
-            // Remove all existing DbContext options
+            // === Database Setup ===
             services.RemoveAll(typeof(DbContextOptions<AppDbContext>));
             services.RemoveAll(typeof(DbContextOptions));
             services.RemoveAll(typeof(AppDbContext));
@@ -44,7 +34,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(dbConnectionDescriptor);
             }
 
-            // Add InMemory Database
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase("InMemoryDbForTesting")
                 .Options;
@@ -52,7 +41,39 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(options);
             services.AddScoped<AppDbContext>();
 
-            // Seed roles
+            // === JWT Settings Override ===
+            var testJwtSettings = new JwtSettings
+            {
+                Key = "ThisIsATestSecretKeyThatIsAtLeast32Characters!",
+                Issuer = "TestIssuer",
+                Audience = "TestAudience",
+                ExpiryMinutes = 60,
+                RefreshTokenExpiryDays = 7
+            };
+
+            // Replace the JwtSettings singleton
+            services.RemoveAll(typeof(JwtSettings));
+            services.AddSingleton(testJwtSettings);
+
+            // Override JWT Bearer options with test key
+            services.Configure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme,
+                options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = testJwtSettings.Issuer,
+                        ValidAudience = testJwtSettings.Audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(testJwtSettings.Key))
+                    };
+                });
+
+            // === Seed Roles ===
             var sp = services.BuildServiceProvider();
             using var scope = sp.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
