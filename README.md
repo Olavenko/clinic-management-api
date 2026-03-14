@@ -97,6 +97,15 @@ dotnet run --project ClinicManagementAPI.Api
 
 The API will start at `https://localhost:5001` (or the port configured in `launchSettings.json`).
 
+## Roadmap & Progress
+
+- [x] **Sprint 1** — Project Setup + CI (Build) *(Completed: 2026-03-10)*
+- [x] **Sprint 2** — Authentication (JWT + Refresh Token + Roles Setup) *(Completed: 2026-03-14)*
+- [ ] **Sprint 3** — Patients CRUD + Role-based Authorization + Assign Role *(In Progress)*
+- [ ] **Sprint 4** — Doctors CRUD *(Planned)*
+- [ ] **Sprint 5** — Appointments + Business Logic *(Planned)*
+- [ ] **Sprint 6** — Polish + Documentation + Coverage Review *(Planned)*
+
 ## API Endpoints
 
 | Method | Endpoint               | Description                               |
