@@ -360,6 +360,19 @@
 
 ---
 
+## Section 8 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 6 features (Polish, Documentation)
+
+```markdown
+[ ] Review docs/ to determine required diagrams for Sprint 6
+[ ] Update/Create Component/Sequence Diagrams for final polish and architecture
+[ ] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 6 — Done Definition
 
 ```markdown
@@ -377,6 +390,7 @@
 ✅ AppointmentService coverage is 80%+
 ✅ CI pipeline is fully green on GitHub
 ✅ Final manual test via Scalar UI passes all 10 steps
+✅ Diagrams for Sprint 6 are created and updated
 ```
 
 ---

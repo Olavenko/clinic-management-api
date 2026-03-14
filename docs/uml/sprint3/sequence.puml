@@ -25,9 +25,10 @@ autonumber "<b>[00]</b>"
 
 box "Presentation / API Layer" #161B22
     actor "<color:#E6EDF3><&person></color> Client" as CLIENT
-    participant "<color:#58A6FF><&shield></color> PatientEndpoints" as ENDP << (C,#58A6FF) Controller >>
-    participant "<color:#58A6FF><&shield></color> UserEndpoints" as USR_ENDP << (C,#58A6FF) Controller >>
-    participant "<color:#F85149><&cog></color> Authorization" as AUTH << (F,#F85149) Middleware >>
+    participant "<color:#58A6FF><&shield></color> PatientEndpoints" as ENDP << (E,#58A6FF) Minimal API >>
+    participant "<color:#58A6FF><&shield></color> UserEndpoints" as USR_ENDP << (E,#58A6FF) Minimal API >>
+    participant "<color:#F85149><&cog></color> ValidationFilter" as FILT << (F,#F85149) EndpointFilter >>
+    participant "<color:#F85149><&cog></color> Authorization" as AUTH << (M,#F85149) Middleware >>
 end box
 
 box "Core / Application Layer" #0D1117
@@ -48,8 +49,13 @@ activate ENDP
 ENDP -> AUTH : Check JWT + Role
 activate AUTH
 note right AUTH: Requires: Admin\nor Receptionist
-AUTH --> ENDP : Authorized ✅
+AUTH --> ENDP : Authorized ✅ (or 401/403)
 deactivate AUTH
+
+ENDP -> FILT : Validate Request
+activate FILT
+FILT --> ENDP : Valid ✅ (or 400 Bad Request)
+deactivate FILT
 
 ENDP -> SVC : CreateAsync(request)
 activate SVC
@@ -114,8 +120,13 @@ activate ENDP
 
 ENDP -> AUTH : Check JWT + Role
 activate AUTH
-AUTH --> ENDP : Authorized ✅
+AUTH --> ENDP : Authorized ✅ (or 401/403)
 deactivate AUTH
+
+ENDP -> FILT : Validate Request
+activate FILT
+FILT --> ENDP : Valid ✅ (or 400 Bad Request)
+deactivate FILT
 
 ENDP -> SVC : UpdateAsync(id, request)
 activate SVC

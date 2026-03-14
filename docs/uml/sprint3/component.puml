@@ -33,11 +33,11 @@ cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
 package "ClinicManagementAPI System" #0D1117 {
 
     package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
-        component "<color:#F85149><&shield></color> AuthEndpoints" as AUTH_ENDP << Controller >>
-        component "<color:#F85149><&shield></color> PatientEndpoints" as PAT_ENDP << Controller >>
-        component "<color:#F85149><&shield></color> UserEndpoints" as USR_ENDP << Controller >>
+        component "<color:#F85149><&shield></color> AuthEndpoints" as AUTH_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> PatientEndpoints" as PAT_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> UserEndpoints" as USR_ENDP << Minimal API >>
         component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
-        component "ValidationFilter" as FILT << ActionFilter >>
+        component "ValidationFilter" as FILT << EndpointFilter >>
     }
 
     package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {

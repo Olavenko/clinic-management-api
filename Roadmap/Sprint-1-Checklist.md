@@ -539,6 +539,19 @@ With it    → GitHub blocks merge until CI passes ✅
 
 ---
 
+## Section 13 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 1 features (Project Setup, CI)
+
+```markdown
+[✅] Review docs/ to determine required diagrams for Sprint 1
+[✅] Update/Create Component/Sequence Diagrams for project setup
+[✅] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 1 — Done Definition
 
 ```markdown
@@ -557,6 +570,7 @@ With it    → GitHub blocks merge until CI passes ✅
 ✅ dotnet run starts the API with no errors
 ✅ GitHub Actions CI runs green on every push
 ✅ Branch Protection is enabled on main
+✅ Diagrams for Sprint 1 are created and updated
 ```
 
 ---

@@ -30,7 +30,7 @@ package "Patient Management" #0D1117 {
         * **Id** : int <<PK, Identity>>
         --
         * FullName : nvarchar(100)
-        * Email : nvarchar(450) <<Filtered Unique Index>>
+        * Email : nvarchar(450) <<UK, Filtered: IsDeleted=0>>
         * Phone : nvarchar(max)
         * DateOfBirth : date
         * Gender : int <<enum>>
