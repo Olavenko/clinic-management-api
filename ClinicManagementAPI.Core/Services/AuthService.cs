@@ -41,7 +41,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
 
         await userManager.AddToRoleAsync(user, AppRoles.Patient);
 
-        var accessToken = GenerateJwtToken(user);
+        var accessToken = await GenerateJwtToken(user);
         var refreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
@@ -77,7 +77,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             return Result<AuthResponse>.Failure("Invalid credentials", 401);
         }
 
-        var accessToken = GenerateJwtToken(user);
+        var accessToken = await GenerateJwtToken(user);
         var refreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
@@ -118,7 +118,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
 
         var user = await userManager.FindByIdAsync(storedToken.UserId);
 
-        var newAccessToken = GenerateJwtToken(user!);
+        var newAccessToken = await GenerateJwtToken(user!);
         var newRefreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
@@ -156,8 +156,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         return Result<bool>.Success(true);
     }
 
-    // Generate JWT token with user claims
-    private string GenerateJwtToken(ApplicationUser user)
+    // Generate JWT token with user claims (including roles)
+    private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
         var claims = new List<Claim>
         {
@@ -166,6 +166,13 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("fullName", user.FullName)
         };
+
+        // Add role claims — required for RequireRole() authorization to work with JWT
+        var roles = await userManager.GetRolesAsync(user);
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -187,5 +194,30 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    // Assign a role to a user — Admin only
+    public async Task<Result<bool>> AssignRoleAsync(string userId, AssignRoleRequest request)
+    {
+        // Find user by ID
+        ApplicationUser? user = await userManager.FindByIdAsync(userId);
+
+        if (user is null)
+            return Result<bool>.Failure("User not found", 404);
+
+        // Validate role exists in AppRoles
+        string[] validRoles = [AppRoles.Admin, AppRoles.Receptionist, AppRoles.Patient];
+
+        if (!validRoles.Contains(request.Role))
+            return Result<bool>.Failure("Invalid role", 400);
+
+        // Remove all current roles
+        IList<string> currentRoles = await userManager.GetRolesAsync(user);
+        await userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        // Assign new role
+        await userManager.AddToRoleAsync(user, request.Role);
+
+        return Result<bool>.Success(true);
     }
 }

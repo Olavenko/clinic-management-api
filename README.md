@@ -55,6 +55,7 @@ Comprehensive UML documentation is maintained in the `docs/uml/` directory, crea
 
 - **Sprint 1**: Layered Architecture & CI Pipeline Component Diagram (`docs/uml/sprint1/`)
 - **Sprint 2**: Authentication Sequence, Use Case, and Class Diagrams (`docs/uml/sprint2/`)
+- **Sprint 3**: Patients CRUD Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint3/`)
 
 High-fidelity `.svg` vector images with built-in OpenIconic sprites are exported into the respective `exports/` subfolders for easy viewing. Learn how to generate or modify these diagrams by reading `docs/uml/Diagrams-Readme.md`.
 
@@ -101,21 +102,27 @@ The API will start at `https://localhost:5001` (or the port configured in `launc
 
 - [x] **Sprint 1** — Project Setup + CI (Build) *(Completed: 2026-03-10)*
 - [x] **Sprint 2** — Authentication (JWT + Refresh Token + Roles Setup) *(Completed: 2026-03-14)*
-- [ ] **Sprint 3** — Patients CRUD + Role-based Authorization + Assign Role *(In Progress)*
-- [ ] **Sprint 4** — Doctors CRUD *(Planned)*
+- [x] **Sprint 3** — Patients CRUD + Role-based Authorization + Assign Role *(Completed: 2026-03-14)*
+- [ ] **Sprint 4** — Doctors CRUD *(In Progress)*
 - [ ] **Sprint 5** — Appointments + Business Logic *(Planned)*
 - [ ] **Sprint 6** — Polish + Documentation + Coverage Review *(Planned)*
 
 ## API Endpoints
 
-| Method | Endpoint               | Description                               |
-|--------|------------------------|-------------------------------------------|
-| `GET`  | `/health`              | Health check (API + database)             |
-| `GET`  | `/openapi/v1.json`     | OpenAPI specification (dev only)          |
-| `POST` | `/api/auth/register`   | Register a new user                       |
-| `POST` | `/api/auth/login`      | Login and receive JWT & Refresh Token     |
-| `POST` | `/api/auth/refresh`    | Refresh an expired JWT using refresh token|
-| `POST` | `/api/auth/logout`     | Logout and revoke refresh token           |
+| Method   | Endpoint                 | Description                               |
+|----------|--------------------------|-------------------------------------------|
+| `GET`    | `/health`                | Health check (API + database)             |
+| `GET`    | `/openapi/v1.json`       | OpenAPI specification (dev only)          |
+| `POST`   | `/api/auth/register`     | Register a new user                       |
+| `POST`   | `/api/auth/login`        | Login and receive JWT & Refresh Token     |
+| `POST`   | `/api/auth/refresh`      | Refresh an expired JWT using refresh token|
+| `POST`   | `/api/auth/logout`       | Logout and revoke refresh token           |
+| `PUT`    | `/api/users/{id}/role`   | Assign a role to a user                   |
+| `GET`    | `/api/patients`          | Get a paginated list of patients          |
+| `GET`    | `/api/patients/{id}`     | Get a specific patient by ID              |
+| `POST`   | `/api/patients`          | Add a new patient                         |
+| `PUT`    | `/api/patients/{id}`     | Update an existing patient                |
+| `DELETE` | `/api/patients/{id}`     | Soft delete a patient                     |
 
 > More endpoints will be added in upcoming sprints.
 

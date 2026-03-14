@@ -14,12 +14,13 @@
 **Goal:** Define a reusable interface for Soft Delete — used by Patient now and Doctor in Sprint 4
 
 ```markdown
-[ ] Create ISoftDeletable interface in Core/Interfaces/
+[x] Create ISoftDeletable interface in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/ISoftDeletable.cs" -ItemType File -Force
     Properties:
     - IsDeleted (bool)
     - DeletedAt (DateTime, nullable)
 
-[ ] This interface will be used by:
+[x] This interface will be used by:
     - Patient model (this sprint)
     - Doctor model (Sprint 4)
     - Any future entity that needs soft delete
@@ -40,10 +41,12 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
 **Goal:** Define the Patient entity with an optional link to ApplicationUser and Soft Delete support
 
 ```markdown
-[ ] Create Gender enum in Core/Models/
+[x] Create Gender enum in Core/Models/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Models/Gender.cs" -ItemType File -Force
     public enum Gender { Male, Female }
 
-[ ] Create Patient model in Core/Models/
+[x] Create Patient model in Core/Models/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Models/Patient.cs" -ItemType File -Force
     Implements: ISoftDeletable
     Properties:
     - Id (int)
@@ -64,7 +67,7 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
     - Patient registered themselves → UserId links to their account
     - Receptionist added the patient → UserId is null (no account yet)
 
-[ ] Configure Patient entity in AppDbContext OnModelCreating
+[x] Configure Patient entity in AppDbContext OnModelCreating
     - Filtered Unique Index on Email: .HasIndex(p => p.Email).IsUnique().HasFilter("IsDeleted = 0")
     - UserId has optional relationship: .HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).IsRequired(false)
     - Global Query Filter: .HasQueryFilter(p => !p.IsDeleted)
@@ -80,14 +83,14 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
     - No need to add IsDeleted check in every service method
     - Can bypass with .IgnoreQueryFilters() when needed
 
-[ ] Add Patients DbSet to AppDbContext
+[x] Add Patients DbSet to AppDbContext
     public DbSet<Patient> Patients => Set<Patient>();
 
-[ ] Add Patient Migration
+[x] Add Patient Migration
     Command: dotnet ef migrations add AddPatients --project ClinicManagementAPI.Core
                                                   --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[x] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
 ```
@@ -115,7 +118,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
 **Goal:** Define request and response shapes — never expose the raw model to the API consumer
 
 ```markdown
-[ ] Create CreatePatientRequest DTO in Api/DTOs/Patients/
+[x] Create CreatePatientRequest DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/CreatePatientRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, [Required], [MinLength(2)], [MaxLength(100)])
     - Email (string, [Required], [EmailAddress])
@@ -124,7 +128,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
     - Gender (Gender enum, [Required])
     - Address (string, optional, [MaxLength(250)])
 
-[ ] Create UpdatePatientRequest DTO in Api/DTOs/Patients/
+[x] Create UpdatePatientRequest DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/UpdatePatientRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, optional, [MinLength(2)], [MaxLength(100)])
     - Email (string, optional, [EmailAddress])
@@ -137,7 +142,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
     BUT at least one field must be provided
     → Validate in PatientService: if all fields are null → Result.Failure("At least one field must be provided", 400)
 
-[ ] Create PatientResponse DTO in Api/DTOs/Patients/
+[x] Create PatientResponse DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/PatientResponse.cs" -ItemType File -Force
     Properties:
     - Id (int)
     - FullName (string)
@@ -167,14 +173,16 @@ Use DTOs         → Full control over what goes in and out of the API ✅
 **Goal:** Reusable pagination and search DTOs — used by Patients now and Doctors/Appointments later
 
 ```markdown
-[ ] Create PaginationRequest DTO in Api/DTOs/
+[x] Create PaginationRequest DTO in Api/DTOs/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/PaginationRequest.cs" -ItemType File -Force
     Properties:
     - Page (int, default = 1, min = 1)
     - PageSize (int, default = 10, min = 1, max = 50)
     - SearchTerm (string, optional)
       → Will search by FullName, Email, or Phone
 
-[ ] Create PagedResponse<T> DTO in Api/DTOs/
+[x] Create PagedResponse<T> DTO in Api/DTOs/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/PagedResponse.cs" -ItemType File -Force
     Properties:
     - Items (IEnumerable<T>)
     - Page (int)
@@ -199,7 +207,8 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
 **Goal:** Define the contract before implementation — consistent with Result Pattern from Sprint 2
 
 ```markdown
-[ ] Create IPatientService interface in Core/Interfaces/
+[x] Create IPatientService interface in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/IPatientService.cs" -ItemType File -Force
     Methods (all return Result<T>):
     - Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(PaginationRequest pagination)
     - Task<Result<PatientResponse>> GetByIdAsync(int id)
@@ -216,7 +225,7 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
 **Goal:** Implement business logic using Result Pattern — Soft Delete instead of Hard Delete
 
 ```markdown
-[ ] Create PatientService in Core/Services/
+[x] Create PatientService in Core/Services/
     Implements IPatientService
 
     GetAllAsync:
@@ -265,7 +274,7 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
     - Save to Database
     - Return Result.Success(true)
 
-[ ] Register IPatientService in Program.cs
+[x] Register IPatientService in Program.cs
     builder.Services.AddScoped<IPatientService, PatientService>()
 ```
 
@@ -284,7 +293,8 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** Expose CRUD endpoints with Role-based protection — first real use of Roles from Sprint 2
 
 ```markdown
-[ ] Create PatientEndpoints.cs in Api/Endpoints/
+[x] Create PatientEndpoints.cs in Api/Endpoints/
+    Command : New-Item -Path "ClinicManagementAPI.Api/Endpoints/PatientEndpoints.cs" -ItemType File -Force
 
     GET /api/patients
     - Requires JWT Token
@@ -329,7 +339,7 @@ Check ALL patients         → Email is truly unique across entire database → 
     - Returns 401 if no token
     - Returns 403 if wrong role
 
-[ ] Map Patient endpoints in Program.cs
+[x] Map Patient endpoints in Program.cs
     app.MapPatientEndpoints()
 ```
 
@@ -341,15 +351,17 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** Allow Admin to promote any user to a different role
 
 ```markdown
-[ ] Create AssignRoleRequest DTO in Api/DTOs/Auth/
+[x] Create AssignRoleRequest DTO in Core/DTOs/Auth/
+    Command : New-Item -Path "ClinicManagementAPI.Core/DTOs/Auth/AssignRoleRequest.cs" -ItemType File -Force
     Properties:
     - Role (string, [Required]) → must match one of AppRoles constants
 
-[ ] Add AssignRoleAsync to IAuthService in Core/Interfaces/
+[x] Add AssignRoleAsync to IAuthService in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/IAuthService.cs" -ItemType File -Force
     Method:
     - Task<Result<bool>> AssignRoleAsync(string userId, AssignRoleRequest request)
 
-[ ] Implement AssignRoleAsync in AuthService
+[x] Implement AssignRoleAsync in AuthService
     - Find user by userId
       → if null, return Result.Failure("User not found", 404)
     - Validate role exists in AppRoles
@@ -363,7 +375,8 @@ Check ALL patients         → Email is truly unique across entire database → 
     // This is intentional for a clinic system where a person is either
     // Admin, Receptionist, or Patient — not multiple roles at once.
 
-[ ] Add Assign Role endpoint in AuthEndpoints.cs
+[x] Create UserEndpoints.cs in Api/Endpoints/ (separate from AuthEndpoints)
+    Command : New-Item -Path "ClinicManagementAPI.Api/Endpoints/UserEndpoints.cs" -ItemType File -Force
     PUT /api/users/{id}/role
     - Requires JWT Token
     - Allowed roles: Admin ONLY
@@ -373,6 +386,14 @@ Check ALL patients         → Email is truly unique across entire database → 
     - Returns 400 if invalid role
     - Returns 401 if no token
     - Returns 403 if not Admin
+
+    ⚠️ Design Decision: Separate file from AuthEndpoints.cs
+    - AuthEndpoints → authentication (register, login, refresh, logout)
+    - UserEndpoints → user management (assign role, future: get all users, delete user)
+    - Route: /api/users/{id}/role (not /api/auth/users/{id}/role)
+
+[x] Map User endpoints in Program.cs
+    app.MapUserEndpoints()
 ```
 
 ---
@@ -383,83 +404,94 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** 70%+ coverage — verify CRUD logic, Soft Delete, search, and Authorization rules
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/PatientServiceTests.cs
+[x] Create Unit Tests in Tests/Unit/PatientServiceTests.cs (19 tests)
     Test cases:
     — GetAll + Search:
-    - GetAllAsync_ReturnsPagedPatients
-    - GetAllAsync_WithPage2_ReturnsCorrectPatients
-    - GetAllAsync_WithSearchTerm_FiltersCorrectly
-    - GetAllAsync_WithNoResults_ReturnsEmptyList
-    - GetAllAsync_DoesNotReturnDeletedPatients
+    - ✅ GetAllAsync_ReturnsPagedPatients
+    - ✅ GetAllAsync_WithPage2_ReturnsCorrectPatients
+    - ✅ GetAllAsync_WithSearchTerm_FiltersCorrectly
+    - ✅ GetAllAsync_WithNoResults_ReturnsEmptyList
+    - ✅ GetAllAsync_DoesNotReturnDeletedPatients
 
     — GetById:
-    - GetByIdAsync_WithValidId_ReturnsSuccessResult
-    - GetByIdAsync_WithInvalidId_ReturnsFailureResult
-    - GetByIdAsync_WithDeletedPatient_ReturnsFailureResult
+    - ✅ GetByIdAsync_WithValidId_ReturnsSuccessResult
+    - ✅ GetByIdAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ GetByIdAsync_WithDeletedPatient_ReturnsFailureResult
 
     — Create:
-    - CreateAsync_WithValidData_ReturnsSuccessResult
-    - CreateAsync_WithDuplicateEmail_ReturnsFailureResult
-    - CreateAsync_WithDeletedPatientEmail_ReturnsFailureResult
+    - ✅ CreateAsync_WithValidData_ReturnsSuccessResult
+    - ✅ CreateAsync_WithDuplicateEmail_ReturnsFailureResult
+    - ✅ CreateAsync_WithDeletedPatientEmail_ReturnsFailureResult
 
     — Update:
-    - UpdateAsync_WithValidId_ReturnsSuccessResult
-    - UpdateAsync_WithInvalidId_ReturnsFailureResult
-    - UpdateAsync_WithAllFieldsNull_ReturnsFailureResult
-    - UpdateAsync_WithDuplicateEmail_ReturnsFailureResult
+    - ✅ UpdateAsync_WithValidId_ReturnsSuccessResult
+    - ✅ UpdateAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ UpdateAsync_WithAllFieldsNull_ReturnsFailureResult
+    - ✅ UpdateAsync_WithDuplicateEmail_ReturnsFailureResult
 
     — Delete (Soft Delete):
-    - DeleteAsync_WithValidId_SetsIsDeletedTrue
-    - DeleteAsync_WithValidId_SetsDeletedAtToUtcNow
-    - DeleteAsync_WithInvalidId_ReturnsFailureResult
-    - DeleteAsync_PatientDisappearsFromGetAll
+    - ✅ DeleteAsync_WithValidId_SetsIsDeletedTrue
+    - ✅ DeleteAsync_WithValidId_SetsDeletedAtToUtcNow
+    - ✅ DeleteAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ DeleteAsync_PatientDisappearsFromGetAll
 
-[ ] Add to existing Tests/Unit/AuthServiceTests.cs
+[x] Add to existing Tests/Unit/AuthServiceTests.cs (3 new tests → 15 total)
     Test cases:
-    - AssignRoleAsync_WithValidUserId_ReturnsSuccessResult
-    - AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult
-    - AssignRoleAsync_WithInvalidRole_ReturnsFailureResult
+    - ✅ AssignRoleAsync_WithValidUserId_ReturnsSuccessResult
+    - ✅ AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult
+    - ✅ AssignRoleAsync_WithInvalidRole_ReturnsFailureResult
 
-[ ] Create Integration Tests in Tests/Integration/PatientEndpointsTests.cs
+[x] Create Integration Tests in Tests/Integration/PatientEndpointsTests.cs (20 tests)
     Test cases:
     — Authorization tests:
-    - GET    /api/patients        → 200 with Admin token
-    - GET    /api/patients        → 200 with Receptionist token
-    - GET    /api/patients        → 401 without token
-    - GET    /api/patients        → 403 with Patient token
-    - DELETE /api/patients/{id}   → 204 with Admin token
-    - DELETE /api/patients/{id}   → 403 with Receptionist token
+    - ✅ GET    /api/patients        → 200 with Admin token
+    - ✅ GET    /api/patients        → 200 with Receptionist token
+    - ✅ GET    /api/patients        → 401 without token
+    - ✅ GET    /api/patients        → 403 with Patient token
+    - ✅ DELETE /api/patients/{id}   → 204 with Admin token
+    - ✅ DELETE /api/patients/{id}   → 403 with Receptionist token
 
     — CRUD tests:
-    - GET    /api/patients        → 200 with correct pagination
-    - GET    /api/patients?searchTerm=ahmed → 200 with filtered results
-    - GET    /api/patients/{id}   → 200 with valid id
-    - GET    /api/patients/{id}   → 404 with invalid id
-    - POST   /api/patients        → 201 with valid data
-    - POST   /api/patients        → 400 with missing fields
-    - POST   /api/patients        → 400 with duplicate email
-    - PUT    /api/patients/{id}   → 200 with valid partial data
-    - PUT    /api/patients/{id}   → 400 with all fields empty
-    - PUT    /api/patients/{id}   → 404 with invalid id
+    - ✅ GET    /api/patients        → 200 with correct pagination
+    - ✅ GET    /api/patients?searchTerm=ahmed → 200 with filtered results
+    - ✅ GET    /api/patients/{id}   → 200 with valid id
+    - ✅ GET    /api/patients/{id}   → 404 with invalid id
+    - ✅ POST   /api/patients        → 201 with valid data
+    - ✅ POST   /api/patients        → 400 with missing fields
+    - ✅ POST   /api/patients        → 400 with duplicate email
+    - ✅ PUT    /api/patients/{id}   → 200 with valid partial data
+    - ✅ PUT    /api/patients/{id}   → 400 with all fields empty
+    - ✅ PUT    /api/patients/{id}   → 404 with invalid id
 
     — Soft Delete tests:
-    - DELETE /api/patients/{id}   → 204 returns success
-    - GET    /api/patients/{id}   → 404 after soft delete
-    - GET    /api/patients        → soft-deleted patient not in list
-    - POST   /api/patients        → 400 creating patient with deleted patient's email
+    - ✅ DELETE /api/patients/{id}   → 204 returns success
+    - ✅ GET    /api/patients/{id}   → 404 after soft delete
+    - ✅ GET    /api/patients        → soft-deleted patient not in list
+    - ✅ POST   /api/patients        → 400 creating patient with deleted patient's email
 
-[ ] Add to existing Tests/Integration/AuthEndpointsTests.cs
+[x] Add to existing Tests/Integration/AuthEndpointsTests.cs (4 new tests → 16 total)
     Test cases:
-    - PUT /api/users/{id}/role → 200 with Admin token + valid role
-    - PUT /api/users/{id}/role → 400 with invalid role
-    - PUT /api/users/{id}/role → 403 with Receptionist token
-    - PUT /api/users/{id}/role → 404 with invalid userId
+    - ✅ PUT /api/users/{id}/role → 200 with Admin token + valid role
+    - ✅ PUT /api/users/{id}/role → 400 with invalid role
+    - ✅ PUT /api/users/{id}/role → 403 with Receptionist token
+    - ✅ PUT /api/users/{id}/role → 404 with invalid userId
 
-[ ] Run all tests and verify they pass
+[x] Run all tests and verify they pass
+    Result: total: 70, failed: 0, succeeded: 70, skipped: 0
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[x] Check coverage
+    Step 1 — Collect coverage data (generates XML):
     Command: dotnet test --collect:"XPlat Code Coverage"
+
+    Step 2 — Install ReportGenerator (one-time):
+    Command: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    Step 3 — Generate HTML report from the XML:
+    Command: reportgenerator -reports:"ClinicManagementAPI.Tests\TestResults\**\coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;TextSummary"
+
+    Step 4 — Open the report in browser:
+    Command: Start-Process "coveragereport\index.html"
 ```
 
 ---
@@ -470,12 +502,25 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** CI pipeline runs all tests including new Patient, Soft Delete, and Assign Role tests
 
 ```markdown
-[ ] Push to GitHub and verify:
+[x] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests still pass
     ✅ All Patient tests pass (including Soft Delete tests)
     ✅ Assign Role tests pass
     ✅ Coverage is 70%+
+```
+
+---
+
+## Section 11 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 3 features (Patients CRUD, Role-based Auth)
+
+```markdown
+[x] Review docs/ to determine required diagrams for Sprint 3
+[x] Update/Create Component/Sequence Diagrams for patient and auth services
+[x] Verify PlantUML/Markdown diagrams render correctly
 ```
 
 ---
@@ -505,6 +550,7 @@ Check ALL patients         → Email is truly unique across entire database → 
 ✅ All Unit Tests pass (including Soft Delete + IgnoreQueryFilters tests)
 ✅ All Integration Tests pass
 ✅ CI pipeline is green on GitHub
+✅ Diagrams for Sprint 3 are created and updated
 ```
 
 ---

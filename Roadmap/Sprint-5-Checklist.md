@@ -557,6 +557,19 @@ Cancel first, then delete    → Audit trail is preserved ✅
 
 ---
 
+## Section 8 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 5 features (Appointments, Business Logic)
+
+```markdown
+[ ] Review docs/ to determine required diagrams for Sprint 5
+[ ] Update/Create Component/Sequence Diagrams for appointments services
+[ ] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 5 — Done Definition
 
 ```markdown
@@ -579,6 +592,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
 ✅ All Unit Tests pass (including overlap, self-exclude, soft delete interaction tests)
 ✅ All Integration Tests pass
 ✅ CI pipeline is green on GitHub
+✅ Diagrams for Sprint 5 are created and updated
 ```
 
 ---
