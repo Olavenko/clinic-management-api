@@ -173,7 +173,8 @@ Use DTOs         → Full control over what goes in and out of the API ✅
 **Goal:** Reusable pagination and search DTOs — used by Patients now and Doctors/Appointments later
 
 ```markdown
-[ ] Create PaginationRequest DTO in Api/DTOs/
+[x] Create PaginationRequest DTO in Api/DTOs/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/PaginationRequest.cs" -ItemType File -Force
     Properties:
     - Page (int, default = 1, min = 1)
     - PageSize (int, default = 10, min = 1, max = 50)
@@ -181,6 +182,7 @@ Use DTOs         → Full control over what goes in and out of the API ✅
       → Will search by FullName, Email, or Phone
 
 [ ] Create PagedResponse<T> DTO in Api/DTOs/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/PagedResponse.cs" -ItemType File -Force
     Properties:
     - Items (IEnumerable<T>)
     - Page (int)
