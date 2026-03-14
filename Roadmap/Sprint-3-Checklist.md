@@ -181,7 +181,7 @@ Use DTOs         → Full control over what goes in and out of the API ✅
     - SearchTerm (string, optional)
       → Will search by FullName, Email, or Phone
 
-[ ] Create PagedResponse<T> DTO in Api/DTOs/
+[x] Create PagedResponse<T> DTO in Api/DTOs/
     Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/PagedResponse.cs" -ItemType File -Force
     Properties:
     - Items (IEnumerable<T>)
@@ -207,7 +207,8 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
 **Goal:** Define the contract before implementation — consistent with Result Pattern from Sprint 2
 
 ```markdown
-[ ] Create IPatientService interface in Core/Interfaces/
+[x] Create IPatientService interface in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/IPatientService.cs" -ItemType File -Force
     Methods (all return Result<T>):
     - Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(PaginationRequest pagination)
     - Task<Result<PatientResponse>> GetByIdAsync(int id)

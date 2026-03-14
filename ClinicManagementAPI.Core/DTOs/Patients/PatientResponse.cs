@@ -1,4 +1,4 @@
-﻿namespace ClinicManagementAPI.Api.DTOs.Patients;
+namespace ClinicManagementAPI.Core.DTOs.Patients;
 
 // DTO for returning patient data to the API consumer
 // No IsDeleted or DeletedAt — these are internal fields

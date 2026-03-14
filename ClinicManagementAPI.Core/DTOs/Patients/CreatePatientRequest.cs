@@ -1,8 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 using ClinicManagementAPI.Core.Models;
 
-namespace ClinicManagementAPI.Api.DTOs.Patients;
+namespace ClinicManagementAPI.Core.DTOs.Patients;
 
 public class CreatePatientRequest
 {
