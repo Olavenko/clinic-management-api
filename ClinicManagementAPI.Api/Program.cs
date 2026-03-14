@@ -59,6 +59,9 @@ builder.Services.AddAuthentication(options =>
 // Register Authorization service — required for app.UseAuthorization()
 builder.Services.AddAuthorization();
 
+// Register PatientService for DI — any class that needs IPatientService gets PatientService
+builder.Services.AddScoped<IPatientService, PatientService>();
+
 var app = builder.Build();
 
 // Seed roles on startup

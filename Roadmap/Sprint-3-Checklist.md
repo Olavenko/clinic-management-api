@@ -225,7 +225,7 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
 **Goal:** Implement business logic using Result Pattern — Soft Delete instead of Hard Delete
 
 ```markdown
-[ ] Create PatientService in Core/Services/
+[x] Create PatientService in Core/Services/
     Implements IPatientService
 
     GetAllAsync:
@@ -274,7 +274,7 @@ Reusable   → Same DTO works for Doctors and Appointments later ✅
     - Save to Database
     - Return Result.Success(true)
 
-[ ] Register IPatientService in Program.cs
+[x] Register IPatientService in Program.cs
     builder.Services.AddScoped<IPatientService, PatientService>()
 ```
 
