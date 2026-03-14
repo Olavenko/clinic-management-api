@@ -1,4 +1,4 @@
-﻿
+
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Patients;
@@ -19,35 +19,27 @@ public class PatientService(AppDbContext context) : IPatientService
         // Apply search filter if SearchTerm is provided
         if (!string.IsNullOrEmpty(pagination.SearchTerm))
         {
-            string searchTerm = pagination.SearchTerm.Trim().ToLower();
+            string searchTerm = pagination.SearchTerm.Trim();
 
             query = query.Where(p =>
-                p.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                p.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                p.Phone.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+                p.FullName.Contains(searchTerm) ||
+                p.Email.Contains(searchTerm) ||
+                p.Phone.Contains(searchTerm));
         }
 
         // Get total count before pagination (for TotalCount and TotalPages)
         int totalCount = await query.CountAsync();
 
         // Apply ordering and pagination, then fetch from database
-        List<PatientResponse> patients = await query
+        List<Patient> patientEntities = await query
             .OrderBy(p => p.FullName)
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .Select(p => new PatientResponse
-            {
-                Id = p.Id,
-                FullName = p.FullName,
-                Email = p.Email,
-                Phone = p.Phone,
-                DateOfBirth = p.DateOfBirth,
-                Gender = p.Gender.ToString(),
-                Address = p.Address,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt
-            })
             .ToListAsync();
+
+        List<PatientResponse> patients = patientEntities
+            .Select(MapToResponse)
+            .ToList();
 
         // Build paged response
         var response = new PagedResponse<PatientResponse>
@@ -70,18 +62,7 @@ public class PatientService(AppDbContext context) : IPatientService
         if (patient is null)
             return Result<PatientResponse>.Failure("Patient not found", 404);
 
-        var response = new PatientResponse
-        {
-            Id = patient.Id,
-            FullName = patient.FullName,
-            Email = patient.Email,
-            Phone = patient.Phone,
-            DateOfBirth = patient.DateOfBirth,
-            Gender = patient.Gender.ToString(),
-            Address = patient.Address,
-            CreatedAt = patient.CreatedAt,
-            UpdatedAt = patient.UpdatedAt
-        };
+        var response = MapToResponse(patient);
 
         return Result<PatientResponse>.Success(response);
     }
@@ -102,7 +83,7 @@ public class PatientService(AppDbContext context) : IPatientService
             FullName = request.FullName,
             Email = request.Email,
             Phone = request.Phone,
-            DateOfBirth = DateOnly.FromDateTime(request.DateOfBirth),
+            DateOfBirth = request.DateOfBirth,
             Gender = request.Gender,
             Address = request.Address,
             CreatedAt = DateTime.UtcNow
@@ -112,18 +93,7 @@ public class PatientService(AppDbContext context) : IPatientService
         await context.SaveChangesAsync();
 
         // Map entity to response
-        var response = new PatientResponse
-        {
-            Id = patient.Id,
-            FullName = patient.FullName,
-            Email = patient.Email,
-            Phone = patient.Phone,
-            DateOfBirth = DateOnly.FromDateTime(request.DateOfBirth),
-            Gender = patient.Gender.ToString(),
-            Address = patient.Address,
-            CreatedAt = patient.CreatedAt,
-            UpdatedAt = patient.UpdatedAt
-        };
+        var response = MapToResponse(patient);
 
         return Result<PatientResponse>.Success(response);
     }
@@ -173,18 +143,7 @@ public class PatientService(AppDbContext context) : IPatientService
         await context.SaveChangesAsync();
 
         // Map entity to response
-        var response = new PatientResponse
-        {
-            Id = patient.Id,
-            FullName = patient.FullName,
-            Email = patient.Email,
-            Phone = patient.Phone,
-            DateOfBirth = patient.DateOfBirth,
-            Gender = patient.Gender.ToString(),
-            Address = patient.Address,
-            CreatedAt = patient.CreatedAt,
-            UpdatedAt = patient.UpdatedAt
-        };
+        var response = MapToResponse(patient);
 
         return Result<PatientResponse>.Success(response);
     }
@@ -206,4 +165,18 @@ public class PatientService(AppDbContext context) : IPatientService
 
         return Result<bool>.Success(true);
     }
+
+    // Centralized mapping: Patient entity → PatientResponse DTO
+    private static PatientResponse MapToResponse(Patient patient) => new()
+    {
+        Id = patient.Id,
+        FullName = patient.FullName,
+        Email = patient.Email,
+        Phone = patient.Phone,
+        DateOfBirth = patient.DateOfBirth,
+        Gender = patient.Gender.ToString(),
+        Address = patient.Address,
+        CreatedAt = patient.CreatedAt,
+        UpdatedAt = patient.UpdatedAt
+    };
 }

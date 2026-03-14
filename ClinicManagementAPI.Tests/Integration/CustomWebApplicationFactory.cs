@@ -1,4 +1,4 @@
-﻿using ClinicManagementAPI.Core.Data;
+using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.Models;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -35,7 +35,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             }
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase("InMemoryDbForTesting")
+                .UseInMemoryDatabase($"InMemoryDbForTesting_{Guid.NewGuid()}")
                 .Options;
 
             services.AddSingleton(options);

@@ -338,4 +338,73 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(400, result.StatusCode);
         Assert.Equal("Invalid token", result.Error);
     }
+
+    // Test 13 — Assign role with valid user
+    [Fact]
+    public async Task AssignRoleAsync_WithValidUserId_ReturnsSuccessResult()
+    {
+        // Arrange — register a user (defaults to Patient role)
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Role User",
+            Email = "role@clinic.com",
+            Password = "Test1234!"
+        };
+        await _authService.RegisterAsync(registerRequest);
+
+        var user = await _userManager.FindByEmailAsync("role@clinic.com");
+        var assignRequest = new AssignRoleRequest { Role = AppRoles.Receptionist };
+
+        // Act
+        var result = await _authService.AssignRoleAsync(user!.Id, assignRequest);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+
+        // Verify role was changed
+        var roles = await _userManager.GetRolesAsync(user);
+        Assert.Single(roles);
+        Assert.Contains(AppRoles.Receptionist, roles);
+    }
+
+    // Test 14 — Assign role with invalid user ID
+    [Fact]
+    public async Task AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult()
+    {
+        // Arrange
+        var assignRequest = new AssignRoleRequest { Role = AppRoles.Admin };
+
+        // Act
+        var result = await _authService.AssignRoleAsync("non-existent-user-id", assignRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(404, result.StatusCode);
+        Assert.Equal("User not found", result.Error);
+    }
+
+    // Test 15 — Assign role with invalid role name
+    [Fact]
+    public async Task AssignRoleAsync_WithInvalidRole_ReturnsFailureResult()
+    {
+        // Arrange — register a user
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Invalid Role User",
+            Email = "invalidrole@clinic.com",
+            Password = "Test1234!"
+        };
+        await _authService.RegisterAsync(registerRequest);
+
+        var user = await _userManager.FindByEmailAsync("invalidrole@clinic.com");
+        var assignRequest = new AssignRoleRequest { Role = "SuperAdmin" }; // not a valid role
+
+        // Act
+        var result = await _authService.AssignRoleAsync(user!.Id, assignRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Invalid role", result.Error);
+    }
 }

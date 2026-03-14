@@ -1,0 +1,105 @@
+@startuml
+' -------------------------------------------------------
+' File: component.puml
+' -------------------------------------------------------
+' Purpose   : Component — Updated Architecture with Patient CRUD & User Management
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Component — Patient CRUD & Role Authorization Architecture (Sprint 3)
+
+' === Header/Footer ===
+header Clinic Management System - Architecture Overview
+footer Sprint 3 — Patients CRUD + Assign Role
+
+' === Layout Settings ===
+left to right direction
+skinparam nodesep 50
+skinparam ranksep 50
+
+' === External/CI Layer ===
+cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
+    component "<color:#58A6FF><&cog></color> GitHub Actions" as CI << CI/CD >> #0D1117
+    note bottom of CI: Build, Lint, Test\n(dotnet build/test)
+}
+
+' === Application System ===
+package "ClinicManagementAPI System" #0D1117 {
+
+    package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
+        component "<color:#F85149><&shield></color> AuthEndpoints" as AUTH_ENDP << Controller >>
+        component "<color:#F85149><&shield></color> PatientEndpoints" as PAT_ENDP << Controller >>
+        component "<color:#F85149><&shield></color> UserEndpoints" as USR_ENDP << Controller >>
+        component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
+        component "ValidationFilter" as FILT << ActionFilter >>
+    }
+
+    package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {
+        component "<color:#3FB950><&cog></color> AuthService" as AUTH_SVC << Service >>
+        component "<color:#3FB950><&cog></color> PatientService" as PAT_SVC << Service >>
+        interface "IAuthService" as AUTH_INTF << Interface >>
+        interface "IPatientService" as PAT_INTF << Interface >>
+
+        folder "Data" as DATA_FOLDER {
+            component "<color:#D29922><&hard-drive></color> AppDbContext" as DATA << Persistence >>
+            component "DTOs" as DTO
+            component "Models" as MOD
+        }
+    }
+
+    package "Tests Project" as TESTS << Layer >> {
+        component "Unit Tests" as UT << xUnit >>
+        component "Integration" as IT << xUnit >>
+    }
+}
+
+' === Infrastructure Layer ===
+node "External Infrastructure" #161B22 {
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << Database >>
+    component "<color:#A371F7><&shield></color> ASP.NET Core\nIdentity" as IDENTITY << Package >>
+}
+
+' === Presentation Layer (External) ===
+actor "Web/Mobile Client" as CLIENT
+
+' === Relationships ===
+
+' [1-2] CI flow
+CI -[#39C5CF]down-> API : " (1) Deploys to "
+CI -[#3FB950]down-> TESTS : " (2) Executes "
+
+' [3-5] Request Entry & Validation
+CLIENT -[#58A6FF]right-> PAT_ENDP : " (3) Patient CRUD "
+CLIENT -[#58A6FF]right-> AUTH_ENDP : " (4) Auth Requests "
+CLIENT -[#58A6FF]right-> USR_ENDP : " (5) Assign Role "
+
+' [6-7] Middleware & Filters
+MW -[#58A6FF]down-> PAT_ENDP : " (6) JWT + Role Check "
+FILT -[#58A6FF]down-> DTO : " (7) Validates "
+
+' [8-9] Patient Endpoints → Service
+PAT_ENDP -[#58A6FF]down-> PAT_INTF : " (8) Injects "
+PAT_SVC .[#3FB950]left.|> PAT_INTF : " (9) Implements "
+
+' [10-11] Auth/User Endpoints → Service
+AUTH_ENDP -[#58A6FF]down-> AUTH_INTF : " (10) Injects "
+USR_ENDP -[#58A6FF]down-> AUTH_INTF : " (11) Injects "
+AUTH_SVC .[#3FB950]left.|> AUTH_INTF : " (12) Implements "
+
+' [13-16] Data & Persistence
+PAT_SVC -[#3FB950]down-> DATA : " (13) Persists via "
+PAT_SVC -[#3FB950]down-> MOD : " (14) Manipulates "
+DATA -[#A371F7]down-> DB : " (15) EF Core 10 "
+DATA -[#A371F7]right-> IDENTITY : " (16) Stores Users "
+
+' [17-18] Quality Assurance
+UT .[#F85149]up.> PAT_SVC : " (17) Mocks & Tests "
+IT .[#F85149]up.> PAT_ENDP : " (18) WebApplicationFactory "
+
+@enduml

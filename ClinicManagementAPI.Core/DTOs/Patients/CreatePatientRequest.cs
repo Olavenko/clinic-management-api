@@ -24,7 +24,7 @@ public class CreatePatientRequest
 
     [Required]
     [DataType(DataType.Date)]
-    public DateTime DateOfBirth { get; set; }
+    public DateOnly DateOfBirth { get; set; }
 
     [MaxLength(250)]
     public string? Address { get; set; }
