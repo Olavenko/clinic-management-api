@@ -141,9 +141,33 @@ package "ClinicManagementAPI.Core.DTOs" #161B22 {
         + HasNext : bool «computed»
         + HasPrevious : bool «computed»
     }
+}
+
+package "ClinicManagementAPI.Core.DTOs.Auth" #161B22 {
+    
+    class "RegisterRequest" << DTO >> {
+        + FullName : string «Required, MaxLen(100)»
+        + Email : string «Required, EmailAddress»
+        + Password : string «Required, MinLen(6)»
+    }
+
+    class "LoginRequest" << DTO >> {
+        + Email : string «Required, EmailAddress»
+        + Password : string «Required»
+    }
+
+    class "AuthResponse" << DTO >> {
+        + Id : string
+        + FullName : string
+        + Email : string
+        + Roles : List<string>
+        + Token : string
+        + RefreshToken : string
+        + RefreshTokenExpiration : DateTime
+    }
 
     class "AssignRoleRequest" << DTO >> {
-        + Role : string «Required, MinLen(2), MaxLen(100)»
+        + Role : string «Required»
     }
 }
 
@@ -173,8 +197,11 @@ IPatientService -[#58A6FF]down-> PatientResponse : " (6) Output "
 PaginationRequest -[#58A6FF]right-> IPatientService : " (7) Input "
 IPatientService -[#58A6FF]down-> "PagedResponse<T>" : " (7) Wraps Output "
 
-' (8) AssignRole on AuthService
+' (8) Auth flows
+RegisterRequest -[#58A6FF]right-> IAuthService : " (8) Input "
+LoginRequest -[#58A6FF]right-> IAuthService : " (8) Input "
 AssignRoleRequest -[#58A6FF]right-> IAuthService : " (8) Input "
+IAuthService -[#58A6FF]down-> AuthResponse : " (8) Output "
 
 ' === Notes ===
 

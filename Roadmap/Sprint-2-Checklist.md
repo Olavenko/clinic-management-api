@@ -532,6 +532,19 @@ Both together     → Full confidence from service layer to HTTP response ✅
 
 ---
 
+## Section 10 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 2 features (Authentication, JWT)
+
+```markdown
+[✅] Review docs/ to determine required diagrams for Sprint 2
+[✅] Update/Create Component/Sequence Diagrams for Auth services
+[✅] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 2 — Done Definition
 
 ```markdown
@@ -550,6 +563,7 @@ Both together     → Full confidence from service layer to HTTP response ✅
 ✅ All Unit Tests pass (testing Result success/failure)
 ✅ All Integration Tests pass (including validation edge cases)
 ✅ CI pipeline is green on GitHub
+✅ Diagrams for Sprint 2 are created and updated
 ```
 
 ---

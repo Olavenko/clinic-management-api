@@ -512,6 +512,19 @@ Check ALL patients         → Email is truly unique across entire database → 
 
 ---
 
+## Section 11 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 3 features (Patients CRUD, Role-based Auth)
+
+```markdown
+[x] Review docs/ to determine required diagrams for Sprint 3
+[x] Update/Create Component/Sequence Diagrams for patient and auth services
+[x] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 3 — Done Definition
 
 ```markdown
@@ -537,6 +550,7 @@ Check ALL patients         → Email is truly unique across entire database → 
 ✅ All Unit Tests pass (including Soft Delete + IgnoreQueryFilters tests)
 ✅ All Integration Tests pass
 ✅ CI pipeline is green on GitHub
+✅ Diagrams for Sprint 3 are created and updated
 ```
 
 ---
