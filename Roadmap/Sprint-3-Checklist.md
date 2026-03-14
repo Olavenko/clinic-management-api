@@ -15,6 +15,7 @@
 
 ```markdown
 [x] Create ISoftDeletable interface in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/ISoftDeletable.cs" -ItemType File -Force
     Properties:
     - IsDeleted (bool)
     - DeletedAt (DateTime, nullable)
@@ -41,9 +42,11 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
 
 ```markdown
 [x] Create Gender enum in Core/Models/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Models/Gender.cs" -ItemType File -Force
     public enum Gender { Male, Female }
 
 [x] Create Patient model in Core/Models/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Models/Patient.cs" -ItemType File -Force
     Implements: ISoftDeletable
     Properties:
     - Id (int)
@@ -115,7 +118,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
 **Goal:** Define request and response shapes — never expose the raw model to the API consumer
 
 ```markdown
-[ ] Create CreatePatientRequest DTO in Api/DTOs/Patients/
+[x] Create CreatePatientRequest DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/CreatePatientRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, [Required], [MinLength(2)], [MaxLength(100)])
     - Email (string, [Required], [EmailAddress])
@@ -124,7 +128,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
     - Gender (Gender enum, [Required])
     - Address (string, optional, [MaxLength(250)])
 
-[ ] Create UpdatePatientRequest DTO in Api/DTOs/Patients/
+[x] Create UpdatePatientRequest DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/UpdatePatientRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, optional, [MinLength(2)], [MaxLength(100)])
     - Email (string, optional, [EmailAddress])
@@ -137,7 +142,8 @@ Global Query Filter          → EF Core handles it automatically → Safe ✅
     BUT at least one field must be provided
     → Validate in PatientService: if all fields are null → Result.Failure("At least one field must be provided", 400)
 
-[ ] Create PatientResponse DTO in Api/DTOs/Patients/
+[x] Create PatientResponse DTO in Api/DTOs/Patients/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Patients/PatientResponse.cs" -ItemType File -Force
     Properties:
     - Id (int)
     - FullName (string)
