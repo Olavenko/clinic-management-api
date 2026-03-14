@@ -352,6 +352,7 @@ Check ALL patients         → Email is truly unique across entire database → 
 
 ```markdown
 [ ] Create AssignRoleRequest DTO in Api/DTOs/Auth/
+    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Auth/AssignRoleRequest.cs" -ItemType File -Force
     Properties:
     - Role (string, [Required]) → must match one of AppRoles constants
 
