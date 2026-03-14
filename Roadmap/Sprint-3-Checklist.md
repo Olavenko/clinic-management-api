@@ -293,7 +293,8 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** Expose CRUD endpoints with Role-based protection — first real use of Roles from Sprint 2
 
 ```markdown
-[ ] Create PatientEndpoints.cs in Api/Endpoints/
+[x] Create PatientEndpoints.cs in Api/Endpoints/
+    Command : New-Item -Path "ClinicManagementAPI.Api/Endpoints/PatientEndpoints.cs" -ItemType File -Force
 
     GET /api/patients
     - Requires JWT Token
@@ -338,7 +339,7 @@ Check ALL patients         → Email is truly unique across entire database → 
     - Returns 401 if no token
     - Returns 403 if wrong role
 
-[ ] Map Patient endpoints in Program.cs
+[x] Map Patient endpoints in Program.cs
     app.MapPatientEndpoints()
 ```
 
