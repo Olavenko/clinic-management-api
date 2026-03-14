@@ -40,10 +40,10 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
 **Goal:** Define the Patient entity with an optional link to ApplicationUser and Soft Delete support
 
 ```markdown
-[ ] Create Gender enum in Core/Models/
+[x] Create Gender enum in Core/Models/
     public enum Gender { Male, Female }
 
-[ ] Create Patient model in Core/Models/
+[x] Create Patient model in Core/Models/
     Implements: ISoftDeletable
     Properties:
     - Id (int)
@@ -64,7 +64,7 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
     - Patient registered themselves → UserId links to their account
     - Receptionist added the patient → UserId is null (no account yet)
 
-[ ] Configure Patient entity in AppDbContext OnModelCreating
+[x] Configure Patient entity in AppDbContext OnModelCreating
     - Filtered Unique Index on Email: .HasIndex(p => p.Email).IsUnique().HasFilter("IsDeleted = 0")
     - UserId has optional relationship: .HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).IsRequired(false)
     - Global Query Filter: .HasQueryFilter(p => !p.IsDeleted)
@@ -80,14 +80,14 @@ ISoftDeletable interface             → Enforced contract + enables Global Quer
     - No need to add IsDeleted check in every service method
     - Can bypass with .IgnoreQueryFilters() when needed
 
-[ ] Add Patients DbSet to AppDbContext
+[x] Add Patients DbSet to AppDbContext
     public DbSet<Patient> Patients => Set<Patient>();
 
-[ ] Add Patient Migration
+[x] Add Patient Migration
     Command: dotnet ef migrations add AddPatients --project ClinicManagementAPI.Core
                                                   --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[x] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
 ```
