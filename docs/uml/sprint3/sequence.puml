@@ -1,0 +1,246 @@
+@startuml
+' -------------------------------------------------------
+' File: sequence.puml
+' -------------------------------------------------------
+' Purpose   : Sequence — Patient CRUD Flow + Assign Role (with Role Authorization)
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Sequence — Patient CRUD & Role Authorization Flow (Sprint 3)
+
+' === Header/Footer ===
+header Clinic Management System - Patient Module
+footer Patient CRUD + Assign Role Sequence
+
+' === Global Settings ===
+autonumber "<b>[00]</b>"
+
+' === Participants by Layer ===
+
+box "Presentation / API Layer" #161B22
+    actor "<color:#E6EDF3><&person></color> Client" as CLIENT
+    participant "<color:#58A6FF><&shield></color> PatientEndpoints" as ENDP << (C,#58A6FF) Controller >>
+    participant "<color:#58A6FF><&shield></color> UserEndpoints" as USR_ENDP << (C,#58A6FF) Controller >>
+    participant "<color:#F85149><&cog></color> Authorization" as AUTH << (F,#F85149) Middleware >>
+end box
+
+box "Core / Application Layer" #0D1117
+    participant "<color:#3FB950><&cog></color> PatientService" as SVC << (S,#3FB950) Service >>
+    participant "<color:#3FB950><&cog></color> AuthService" as AUTH_SVC << (S,#3FB950) Service >>
+end box
+
+box "Infrastructure / Persistence" #161B22
+    participant "<color:#A371F7><&people></color> UserManager" as UM << (P,#A371F7) Identity >>
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << (D,#D29922) Database >>
+end box
+
+== Create Patient (POST /api/patients) ==
+
+CLIENT -> ENDP : POST /api/patients\n(CreatePatientRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin\nor Receptionist
+AUTH --> ENDP : Authorized ✅
+deactivate AUTH
+
+ENDP -> SVC : CreateAsync(request)
+activate SVC
+
+SVC -> DB : SELECT FROM Patients\nIGNORE QUERY FILTERS\nWHERE Email = request.Email
+activate DB
+DB --> SVC : null (not found)
+deactivate DB
+
+note over SVC: Map CreatePatientRequest → Patient\nSet CreatedAt = UtcNow
+
+SVC -> DB : INSERT INTO Patients
+activate DB
+DB --> SVC : OK
+deactivate DB
+
+SVC --> ENDP : Result.Success(PatientResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 201 Created\n(PatientResponse)
+deactivate ENDP
+
+== Get All Patients (GET /api/patients) ==
+
+CLIENT -> ENDP : GET /api/patients\n?page=1&pageSize=10&searchTerm=ahmed\n(JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+AUTH --> ENDP : Authorized ✅
+deactivate AUTH
+
+ENDP -> SVC : GetAllAsync(PaginationRequest)
+activate SVC
+
+note over SVC: Global Query Filter\nautomatically excludes\nIsDeleted = true
+
+alt SearchTerm provided
+    SVC -> DB : SELECT WHERE\n(FullName LIKE '%ahmed%'\nOR Email LIKE '%ahmed%'\nOR Phone LIKE '%ahmed%')\nAND IsDeleted = false
+    activate DB
+    DB --> SVC : filtered patients
+    deactivate DB
+else No SearchTerm
+    SVC -> DB : SELECT WHERE IsDeleted = false\nORDER BY FullName\nOFFSET/FETCH (pagination)
+    activate DB
+    DB --> SVC : paged patients
+    deactivate DB
+end
+
+note over SVC: Map List<Patient> → List<PatientResponse>\nBuild PagedResponse<PatientResponse>
+
+SVC --> ENDP : Result.Success(PagedResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 200 OK\n(PagedResponse<PatientResponse>)
+deactivate ENDP
+
+== Update Patient (PUT /api/patients/{id}) ==
+
+CLIENT -> ENDP : PUT /api/patients/{id}\n(UpdatePatientRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+AUTH --> ENDP : Authorized ✅
+deactivate AUTH
+
+ENDP -> SVC : UpdateAsync(id, request)
+activate SVC
+
+alt All fields null
+    SVC --> ENDP : Result.Failure("At least one field\nmust be provided", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else At least one field provided
+    SVC -> DB : SELECT FROM Patients\nWHERE Id = {id}\nAND IsDeleted = false
+    activate DB
+    DB --> SVC : patient / null
+    deactivate DB
+
+    alt patient found
+        alt Email is being changed
+            SVC -> DB : SELECT FROM Patients\nIGNORE QUERY FILTERS\nWHERE Email = newEmail AND Id != {id}
+            activate DB
+            DB --> SVC : exists / null
+            deactivate DB
+        end
+
+        note over SVC: Update only provided fields\nSet UpdatedAt = UtcNow
+
+        SVC -> DB : UPDATE Patients SET ...
+        activate DB
+        DB --> SVC : OK
+        deactivate DB
+
+        SVC --> ENDP : Result.Success(PatientResponse)
+        ENDP --> CLIENT : 200 OK\n(PatientResponse)
+    else patient not found
+        SVC --> ENDP : Result.Failure("Patient not found", 404)
+        ENDP --> CLIENT : 404 Not Found
+    end
+end
+deactivate SVC
+deactivate ENDP
+
+== Soft Delete Patient (DELETE /api/patients/{id}) ==
+
+CLIENT -> ENDP : DELETE /api/patients/{id}\n(JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin ONLY\n(Receptionist → 403)
+AUTH --> ENDP : Authorized ✅
+deactivate AUTH
+
+ENDP -> SVC : DeleteAsync(id)
+activate SVC
+
+SVC -> DB : SELECT FROM Patients\nWHERE Id = {id}\nAND IsDeleted = false
+activate DB
+DB --> SVC : patient / null
+deactivate DB
+
+alt patient found
+    note over SVC #21262D: <color:#F85149>⚠ SOFT DELETE</color>\nDoes NOT remove from database\nSets IsDeleted = true\nSets DeletedAt = UtcNow
+
+    SVC -> DB : UPDATE Patients SET\nIsDeleted = true,\nDeletedAt = UtcNow
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+
+    SVC --> ENDP : Result.Success(true)
+    ENDP --> CLIENT : 204 No Content
+else patient not found
+    SVC --> ENDP : Result.Failure("Patient not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+end
+deactivate SVC
+deactivate ENDP
+
+== Assign Role (PUT /api/users/{id}/role) ==
+
+CLIENT -> USR_ENDP : PUT /api/users/{id}/role\n(AssignRoleRequest + JWT)
+activate USR_ENDP
+
+USR_ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin ONLY
+AUTH --> USR_ENDP : Authorized ✅
+deactivate AUTH
+
+USR_ENDP -> AUTH_SVC : AssignRoleAsync(userId, request)
+activate AUTH_SVC
+
+AUTH_SVC -> UM : FindByIdAsync(userId)
+activate UM
+UM --> AUTH_SVC : user / null
+deactivate UM
+
+alt user found
+    alt valid role (Admin / Receptionist / Patient)
+        AUTH_SVC -> UM : GetRolesAsync(user)
+        activate UM
+        UM --> AUTH_SVC : currentRoles
+        deactivate UM
+
+        AUTH_SVC -> UM : RemoveFromRolesAsync(user, currentRoles)
+        activate UM
+        UM --> AUTH_SVC : OK
+        deactivate UM
+
+        AUTH_SVC -> UM : AddToRoleAsync(user, newRole)
+        activate UM
+        UM -> DB : UPDATE AspNetUserRoles
+        activate DB
+        DB --> UM : OK
+        deactivate DB
+        UM --> AUTH_SVC : OK
+        deactivate UM
+
+        AUTH_SVC --> USR_ENDP : Result.Success(true)
+        USR_ENDP --> CLIENT : 200 OK\n{"message": "Role assigned successfully"}
+    else invalid role
+        AUTH_SVC --> USR_ENDP : Result.Failure("Invalid role", 400)
+        USR_ENDP --> CLIENT : 400 Bad Request
+    end
+else user not found
+    AUTH_SVC --> USR_ENDP : Result.Failure("User not found", 404)
+    USR_ENDP --> CLIENT : 404 Not Found
+end
+deactivate AUTH_SVC
+deactivate USR_ENDP
+
+@enduml

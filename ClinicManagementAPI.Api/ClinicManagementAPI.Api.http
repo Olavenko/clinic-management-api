@@ -1,6 +1,84 @@
 @ClinicManagementAPI.Api_HostAddress = http://localhost:5027
 
-GET {{ClinicManagementAPI.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Register a new user
+POST {{ClinicManagementAPI.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
 
-###
+{
+  "fullName": "Test User",
+  "email": "test@clinic.com",
+  "password": "Test1234!"
+}
+
+### Login
+POST {{ClinicManagementAPI.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@clinic.com",
+  "password": "Test1234!"
+}
+
+### Refresh token
+POST {{ClinicManagementAPI.Api_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "PASTE_REFRESH_TOKEN_HERE"
+}
+
+### Logout (requires Bearer token)
+POST {{ClinicManagementAPI.Api_HostAddress}}/api/auth/logout
+Content-Type: application/json
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+{
+  "refreshToken": "PASTE_REFRESH_TOKEN_HERE"
+}
+
+### Get all patients (requires Bearer token)
+GET {{ClinicManagementAPI.Api_HostAddress}}/api/patients?Page=1&PageSize=10
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+### Get patient by ID (requires Bearer token)
+GET {{ClinicManagementAPI.Api_HostAddress}}/api/patients/1
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+### Create a patient (requires Bearer token)
+POST {{ClinicManagementAPI.Api_HostAddress}}/api/patients
+Content-Type: application/json
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+{
+  "fullName": "Jane Doe",
+  "email": "jane@clinic.com",
+  "phone": "+1234567890",
+  "gender": 1,
+  "dateOfBirth": "1990-05-15",
+  "address": "123 Main St"
+}
+
+### Update a patient (requires Bearer token)
+PUT {{ClinicManagementAPI.Api_HostAddress}}/api/patients/1
+Content-Type: application/json
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+{
+  "fullName": "Jane Smith"
+}
+
+### Delete a patient (requires Bearer token, Admin only)
+DELETE {{ClinicManagementAPI.Api_HostAddress}}/api/patients/1
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+### Assign role to user (requires Bearer token, Admin only)
+PUT {{ClinicManagementAPI.Api_HostAddress}}/api/users/USER_ID_HERE/role
+Content-Type: application/json
+Authorization: Bearer PASTE_ACCESS_TOKEN_HERE
+
+{
+  "role": "Receptionist"
+}
+
+### Health check
+GET {{ClinicManagementAPI.Api_HostAddress}}/health

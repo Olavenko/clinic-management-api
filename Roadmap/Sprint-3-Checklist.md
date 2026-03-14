@@ -1,4 +1,4 @@
-﻿# Sprint 3 — Patients CRUD + Role-based Authorization + Assign Role
+# Sprint 3 — Patients CRUD + Role-based Authorization + Assign Role
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -351,16 +351,17 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** Allow Admin to promote any user to a different role
 
 ```markdown
-[ ] Create AssignRoleRequest DTO in Api/DTOs/Auth/
-    Command : New-Item -Path "ClinicManagementAPI.Api/DTOs/Auth/AssignRoleRequest.cs" -ItemType File -Force
+[x] Create AssignRoleRequest DTO in Core/DTOs/Auth/
+    Command : New-Item -Path "ClinicManagementAPI.Core/DTOs/Auth/AssignRoleRequest.cs" -ItemType File -Force
     Properties:
     - Role (string, [Required]) → must match one of AppRoles constants
 
-[ ] Add AssignRoleAsync to IAuthService in Core/Interfaces/
+[x] Add AssignRoleAsync to IAuthService in Core/Interfaces/
+    Command : New-Item -Path "ClinicManagementAPI.Core/Interfaces/IAuthService.cs" -ItemType File -Force
     Method:
     - Task<Result<bool>> AssignRoleAsync(string userId, AssignRoleRequest request)
 
-[ ] Implement AssignRoleAsync in AuthService
+[x] Implement AssignRoleAsync in AuthService
     - Find user by userId
       → if null, return Result.Failure("User not found", 404)
     - Validate role exists in AppRoles
@@ -374,7 +375,8 @@ Check ALL patients         → Email is truly unique across entire database → 
     // This is intentional for a clinic system where a person is either
     // Admin, Receptionist, or Patient — not multiple roles at once.
 
-[ ] Add Assign Role endpoint in AuthEndpoints.cs
+[x] Create UserEndpoints.cs in Api/Endpoints/ (separate from AuthEndpoints)
+    Command : New-Item -Path "ClinicManagementAPI.Api/Endpoints/UserEndpoints.cs" -ItemType File -Force
     PUT /api/users/{id}/role
     - Requires JWT Token
     - Allowed roles: Admin ONLY
@@ -384,6 +386,14 @@ Check ALL patients         → Email is truly unique across entire database → 
     - Returns 400 if invalid role
     - Returns 401 if no token
     - Returns 403 if not Admin
+
+    ⚠️ Design Decision: Separate file from AuthEndpoints.cs
+    - AuthEndpoints → authentication (register, login, refresh, logout)
+    - UserEndpoints → user management (assign role, future: get all users, delete user)
+    - Route: /api/users/{id}/role (not /api/auth/users/{id}/role)
+
+[x] Map User endpoints in Program.cs
+    app.MapUserEndpoints()
 ```
 
 ---
@@ -394,83 +404,94 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** 70%+ coverage — verify CRUD logic, Soft Delete, search, and Authorization rules
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/PatientServiceTests.cs
+[x] Create Unit Tests in Tests/Unit/PatientServiceTests.cs (19 tests)
     Test cases:
     — GetAll + Search:
-    - GetAllAsync_ReturnsPagedPatients
-    - GetAllAsync_WithPage2_ReturnsCorrectPatients
-    - GetAllAsync_WithSearchTerm_FiltersCorrectly
-    - GetAllAsync_WithNoResults_ReturnsEmptyList
-    - GetAllAsync_DoesNotReturnDeletedPatients
+    - ✅ GetAllAsync_ReturnsPagedPatients
+    - ✅ GetAllAsync_WithPage2_ReturnsCorrectPatients
+    - ✅ GetAllAsync_WithSearchTerm_FiltersCorrectly
+    - ✅ GetAllAsync_WithNoResults_ReturnsEmptyList
+    - ✅ GetAllAsync_DoesNotReturnDeletedPatients
 
     — GetById:
-    - GetByIdAsync_WithValidId_ReturnsSuccessResult
-    - GetByIdAsync_WithInvalidId_ReturnsFailureResult
-    - GetByIdAsync_WithDeletedPatient_ReturnsFailureResult
+    - ✅ GetByIdAsync_WithValidId_ReturnsSuccessResult
+    - ✅ GetByIdAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ GetByIdAsync_WithDeletedPatient_ReturnsFailureResult
 
     — Create:
-    - CreateAsync_WithValidData_ReturnsSuccessResult
-    - CreateAsync_WithDuplicateEmail_ReturnsFailureResult
-    - CreateAsync_WithDeletedPatientEmail_ReturnsFailureResult
+    - ✅ CreateAsync_WithValidData_ReturnsSuccessResult
+    - ✅ CreateAsync_WithDuplicateEmail_ReturnsFailureResult
+    - ✅ CreateAsync_WithDeletedPatientEmail_ReturnsFailureResult
 
     — Update:
-    - UpdateAsync_WithValidId_ReturnsSuccessResult
-    - UpdateAsync_WithInvalidId_ReturnsFailureResult
-    - UpdateAsync_WithAllFieldsNull_ReturnsFailureResult
-    - UpdateAsync_WithDuplicateEmail_ReturnsFailureResult
+    - ✅ UpdateAsync_WithValidId_ReturnsSuccessResult
+    - ✅ UpdateAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ UpdateAsync_WithAllFieldsNull_ReturnsFailureResult
+    - ✅ UpdateAsync_WithDuplicateEmail_ReturnsFailureResult
 
     — Delete (Soft Delete):
-    - DeleteAsync_WithValidId_SetsIsDeletedTrue
-    - DeleteAsync_WithValidId_SetsDeletedAtToUtcNow
-    - DeleteAsync_WithInvalidId_ReturnsFailureResult
-    - DeleteAsync_PatientDisappearsFromGetAll
+    - ✅ DeleteAsync_WithValidId_SetsIsDeletedTrue
+    - ✅ DeleteAsync_WithValidId_SetsDeletedAtToUtcNow
+    - ✅ DeleteAsync_WithInvalidId_ReturnsFailureResult
+    - ✅ DeleteAsync_PatientDisappearsFromGetAll
 
-[ ] Add to existing Tests/Unit/AuthServiceTests.cs
+[x] Add to existing Tests/Unit/AuthServiceTests.cs (3 new tests → 15 total)
     Test cases:
-    - AssignRoleAsync_WithValidUserId_ReturnsSuccessResult
-    - AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult
-    - AssignRoleAsync_WithInvalidRole_ReturnsFailureResult
+    - ✅ AssignRoleAsync_WithValidUserId_ReturnsSuccessResult
+    - ✅ AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult
+    - ✅ AssignRoleAsync_WithInvalidRole_ReturnsFailureResult
 
-[ ] Create Integration Tests in Tests/Integration/PatientEndpointsTests.cs
+[x] Create Integration Tests in Tests/Integration/PatientEndpointsTests.cs (20 tests)
     Test cases:
     — Authorization tests:
-    - GET    /api/patients        → 200 with Admin token
-    - GET    /api/patients        → 200 with Receptionist token
-    - GET    /api/patients        → 401 without token
-    - GET    /api/patients        → 403 with Patient token
-    - DELETE /api/patients/{id}   → 204 with Admin token
-    - DELETE /api/patients/{id}   → 403 with Receptionist token
+    - ✅ GET    /api/patients        → 200 with Admin token
+    - ✅ GET    /api/patients        → 200 with Receptionist token
+    - ✅ GET    /api/patients        → 401 without token
+    - ✅ GET    /api/patients        → 403 with Patient token
+    - ✅ DELETE /api/patients/{id}   → 204 with Admin token
+    - ✅ DELETE /api/patients/{id}   → 403 with Receptionist token
 
     — CRUD tests:
-    - GET    /api/patients        → 200 with correct pagination
-    - GET    /api/patients?searchTerm=ahmed → 200 with filtered results
-    - GET    /api/patients/{id}   → 200 with valid id
-    - GET    /api/patients/{id}   → 404 with invalid id
-    - POST   /api/patients        → 201 with valid data
-    - POST   /api/patients        → 400 with missing fields
-    - POST   /api/patients        → 400 with duplicate email
-    - PUT    /api/patients/{id}   → 200 with valid partial data
-    - PUT    /api/patients/{id}   → 400 with all fields empty
-    - PUT    /api/patients/{id}   → 404 with invalid id
+    - ✅ GET    /api/patients        → 200 with correct pagination
+    - ✅ GET    /api/patients?searchTerm=ahmed → 200 with filtered results
+    - ✅ GET    /api/patients/{id}   → 200 with valid id
+    - ✅ GET    /api/patients/{id}   → 404 with invalid id
+    - ✅ POST   /api/patients        → 201 with valid data
+    - ✅ POST   /api/patients        → 400 with missing fields
+    - ✅ POST   /api/patients        → 400 with duplicate email
+    - ✅ PUT    /api/patients/{id}   → 200 with valid partial data
+    - ✅ PUT    /api/patients/{id}   → 400 with all fields empty
+    - ✅ PUT    /api/patients/{id}   → 404 with invalid id
 
     — Soft Delete tests:
-    - DELETE /api/patients/{id}   → 204 returns success
-    - GET    /api/patients/{id}   → 404 after soft delete
-    - GET    /api/patients        → soft-deleted patient not in list
-    - POST   /api/patients        → 400 creating patient with deleted patient's email
+    - ✅ DELETE /api/patients/{id}   → 204 returns success
+    - ✅ GET    /api/patients/{id}   → 404 after soft delete
+    - ✅ GET    /api/patients        → soft-deleted patient not in list
+    - ✅ POST   /api/patients        → 400 creating patient with deleted patient's email
 
-[ ] Add to existing Tests/Integration/AuthEndpointsTests.cs
+[x] Add to existing Tests/Integration/AuthEndpointsTests.cs (4 new tests → 16 total)
     Test cases:
-    - PUT /api/users/{id}/role → 200 with Admin token + valid role
-    - PUT /api/users/{id}/role → 400 with invalid role
-    - PUT /api/users/{id}/role → 403 with Receptionist token
-    - PUT /api/users/{id}/role → 404 with invalid userId
+    - ✅ PUT /api/users/{id}/role → 200 with Admin token + valid role
+    - ✅ PUT /api/users/{id}/role → 400 with invalid role
+    - ✅ PUT /api/users/{id}/role → 403 with Receptionist token
+    - ✅ PUT /api/users/{id}/role → 404 with invalid userId
 
-[ ] Run all tests and verify they pass
+[x] Run all tests and verify they pass
+    Result: total: 70, failed: 0, succeeded: 70, skipped: 0
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[x] Check coverage
+    Step 1 — Collect coverage data (generates XML):
     Command: dotnet test --collect:"XPlat Code Coverage"
+
+    Step 2 — Install ReportGenerator (one-time):
+    Command: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    Step 3 — Generate HTML report from the XML:
+    Command: reportgenerator -reports:"ClinicManagementAPI.Tests\TestResults\**\coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;TextSummary"
+
+    Step 4 — Open the report in browser:
+    Command: Start-Process "coveragereport\index.html"
 ```
 
 ---
@@ -481,7 +502,7 @@ Check ALL patients         → Email is truly unique across entire database → 
 **Goal:** CI pipeline runs all tests including new Patient, Soft Delete, and Assign Role tests
 
 ```markdown
-[ ] Push to GitHub and verify:
+[x] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests still pass
     ✅ All Patient tests pass (including Soft Delete tests)

@@ -1,8 +1,11 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 using ClinicManagementAPI.Core.DTOs.Auth;
+using ClinicManagementAPI.Core.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ClinicManagementAPI.Tests.Integration;
 
@@ -16,6 +19,49 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         _factory = factory;
         _client = factory.CreateClient();
     }
+
+    // ── Helper Methods ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Registers a user and assigns the specified role via UserManager.
+    /// Returns the access token with correct role claims.
+    /// </summary>
+    private async Task<string> GetTokenForRoleAsync(string role)
+    {
+        var email = $"{role.ToLower()}_{Guid.NewGuid()}@example.com";
+        var password = "Password123!";
+
+        var registerRequest = new RegisterRequest
+        {
+            FullName = $"{role} User",
+            Email = email,
+            Password = password
+        };
+        await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+
+        if (role != "Patient")
+        {
+            using var scope = _factory.Services.CreateScope();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await userManager.FindByEmailAsync(email);
+            await userManager.RemoveFromRoleAsync(user!, AppRoles.Patient);
+            await userManager.AddToRoleAsync(user!, role);
+        }
+
+        var loginRequest = new LoginRequest { Email = email, Password = password };
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
+        var authData = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>();
+        return authData!.AccessToken;
+    }
+
+    private static string GetUserIdFromToken(string accessToken)
+    {
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var token = handler.ReadJwtToken(accessToken);
+        return token.Claims.First(c => c.Type == "sub").Value;
+    }
+
+    // ── Auth Endpoint Tests (existing) ──────────────────────────────
 
     // Test 1: Register with valid data
     [Fact]
@@ -292,5 +338,116 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    // ── Role Assignment Tests ───────────────────────────────────────
+
+    // Test 13: Assign role with Admin token + valid role
+    [Fact]
+    public async Task AssignRole_WithAdminTokenAndValidRole_Returns200()
+    {
+        // Arrange — get admin token and a target user
+        var adminToken = await GetTokenForRoleAsync("Admin");
+
+        // Register a target user (default Patient role)
+        var targetEmail = $"target_{Guid.NewGuid()}@example.com";
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Target User",
+            Email = targetEmail,
+            Password = "Password123!"
+        };
+        var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerRequest);
+        var targetAuth = await registerResponse.Content.ReadFromJsonAsync<AuthResponse>();
+        var targetUserId = GetUserIdFromToken(targetAuth!.AccessToken);
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/users/{targetUserId}/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "Receptionist" })
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // Test 14: Assign role with invalid role name
+    [Fact]
+    public async Task AssignRole_WithInvalidRole_Returns400()
+    {
+        // Arrange
+        var adminToken = await GetTokenForRoleAsync("Admin");
+
+        var targetEmail = $"target_{Guid.NewGuid()}@example.com";
+        await _client.PostAsJsonAsync("/api/auth/register", new RegisterRequest
+        {
+            FullName = "Target User",
+            Email = targetEmail,
+            Password = "Password123!"
+        });
+
+        // Get userId from login
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest
+        {
+            Email = targetEmail,
+            Password = "Password123!"
+        });
+        var targetAuth = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>();
+        var targetUserId = GetUserIdFromToken(targetAuth!.AccessToken);
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/users/{targetUserId}/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "SuperAdmin" }) // invalid role
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // Test 15: Assign role with Receptionist token → 403
+    [Fact]
+    public async Task AssignRole_WithReceptionistToken_Returns403()
+    {
+        // Arrange
+        var receptionistToken = await GetTokenForRoleAsync("Receptionist");
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, "/api/users/some-user-id/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "Admin" })
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", receptionistToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // Test 16: Assign role with invalid userId → 404
+    [Fact]
+    public async Task AssignRole_WithInvalidUserId_Returns404()
+    {
+        // Arrange
+        var adminToken = await GetTokenForRoleAsync("Admin");
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, "/api/users/non-existent-id/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "Receptionist" })
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

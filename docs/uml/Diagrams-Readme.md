@@ -64,14 +64,18 @@ docs/uml/
 +-- sprint1/
 |   +-- exports/            <-- Generated SVG outputs (.svg)
 |   +-- component.puml      <-- Architecture diagram
-|   +-- sequence.puml       <-- Request flow
 +-- sprint2/
 |   +-- exports/            <-- Generated SVG outputs (.svg)
-|   +-- component.puml
+|   +-- usecase.puml        <-- Auth & Authorization use cases
 |   +-- sequence.puml       <-- Auth flow (JWT + Refresh Token)
 |   +-- class.puml          <-- Entity relationships
-+-- sprint3/                <-- Patient & Doctor management
-+-- sprint4/                <-- Appointments
++-- sprint3/
+|   +-- exports/            <-- Generated SVG outputs (.svg)
+|   +-- component.puml      <-- Updated architecture (Patient + User endpoints)
+|   +-- sequence.puml       <-- Patient CRUD + Assign Role flow
+|   +-- class.puml          <-- Patient domain & service architecture
+|   +-- erd.puml            <-- Database schema (Patients + Identity tables)
++-- sprint4/                <-- Doctors CRUD
 +-- sprint5/                <-- Business rules
 +-- sprint6/                <-- Polish & deployment
 ```

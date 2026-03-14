@@ -1,0 +1,136 @@
+@startuml
+' -------------------------------------------------------
+' File: erd.puml
+' -------------------------------------------------------
+' Purpose   : ERD — Database Schema with Patient Table & Identity Tables
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title ERD — Database Schema (Sprint 3)
+
+' === Header/Footer ===
+header Clinic Management System - Database Design
+footer Sprint 3 — Patient & Identity Tables
+
+' === Layout Settings ===
+skinparam nodesep 80
+skinparam ranksep 60
+
+' === Tables ===
+
+package "Patient Management" #0D1117 {
+
+    entity "<color:#58A6FF><&medical-cross></color> Patients" as PATIENTS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * FullName : nvarchar(100)
+        * Email : nvarchar(450) <<Filtered Unique Index>>
+        * Phone : nvarchar(max)
+        * DateOfBirth : date
+        * Gender : int <<enum>>
+        Address : nvarchar(250) <<nullable>>
+        * CreatedAt : datetime2
+        UpdatedAt : datetime2 <<nullable>>
+        --
+        UserId : nvarchar(450) <<FK, nullable>>
+        --
+        * IsDeleted : bit <<default: 0>>
+        DeletedAt : datetime2 <<nullable>>
+    }
+}
+
+package "ASP.NET Core Identity" #161B22 {
+
+    entity "<color:#3FB950><&person></color> AspNetUsers" as USERS << Table >> {
+        * **Id** : nvarchar(450) <<PK>>
+        --
+        * FullName : nvarchar(max)
+        * Email : nvarchar(256) <<Unique>>
+        * UserName : nvarchar(256) <<Unique>>
+        * PasswordHash : nvarchar(max)
+        * CreatedAt : datetime2
+        SecurityStamp : nvarchar(max)
+        ConcurrencyStamp : nvarchar(max)
+        --
+        ... other Identity columns ...
+    }
+
+    entity "<color:#A371F7><&shield></color> AspNetRoles" as ROLES << Table >> {
+        * **Id** : nvarchar(450) <<PK>>
+        --
+        * Name : nvarchar(256) <<Unique>>
+        NormalizedName : nvarchar(256)
+        ConcurrencyStamp : nvarchar(max)
+    }
+
+    entity "<color:#D29922><&link-intact></color> AspNetUserRoles" as USER_ROLES << Junction >> {
+        * **UserId** : nvarchar(450) <<PK, FK>>
+        * **RoleId** : nvarchar(450) <<PK, FK>>
+    }
+
+    entity "<color:#D29922><&key></color> RefreshTokens" as TOKENS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * Token : nvarchar(max)
+        * ExpiresAt : datetime2
+        * CreatedAt : datetime2
+        * IsRevoked : bit
+        --
+        * UserId : nvarchar(450) <<FK>>
+    }
+}
+
+' === Relationships ===
+
+' (1) Patient optionally links to a User
+PATIENTS }o..|| USERS : " (1) Optional FK\n(UserId → Id) "
+
+' (2) User has many Refresh Tokens
+USERS ||--o{ TOKENS : " (2) Owns\n(UserId → Id) "
+
+' (3) User-Role junction (many-to-many via Identity)
+USERS ||--o{ USER_ROLES : " (3) Assigned "
+ROLES ||--o{ USER_ROLES : " (3) Contains "
+
+' === Notes ===
+
+note right of PATIENTS
+    **Filtered Unique Index** on Email:
+    ""HasFilter("IsDeleted = 0")""
+    ----
+    Active emails must be unique.
+    Deleted patient's email does NOT
+    block new registrations in the
+    database — but the **service**
+    checks ALL patients via
+    ""IgnoreQueryFilters()"".
+    ----
+    **Global Query Filter**:
+    ""HasQueryFilter(p => !p.IsDeleted)""
+    Auto-excludes deleted patients.
+end note
+
+note bottom of ROLES
+    Seeded Roles:
+    • **Admin** — Full access
+    • **Receptionist** — Patient CRUD
+    • **Patient** — Default role
+    ----
+    Each user has exactly
+    **one role** at a time.
+end note
+
+note left of USER_ROLES
+    Identity manages this
+    junction table. Assign Role
+    endpoint removes all current
+    roles before adding the new one.
+end note
+
+@enduml

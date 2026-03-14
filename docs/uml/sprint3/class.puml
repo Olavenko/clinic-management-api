@@ -1,0 +1,200 @@
+@startuml
+' -------------------------------------------------------
+' File: class.puml
+' -------------------------------------------------------
+' Purpose   : Class Diagram — Patient Domain & Service Architecture
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-14
+' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Class Diagram — Patient Domain Architecture (Sprint 3)
+
+' === Header/Footer ===
+header Clinic Management System - Domain Model
+footer Patient Module Structural Design
+
+' === Layout Settings ===
+skinparam groupInheritance 2
+skinparam nodesep 60
+skinparam ranksep 60
+
+' === Packages ===
+
+package "ClinicManagementAPI.Core.Interfaces" #161B22 {
+
+    interface "<color:#A371F7><&shield></color> ISoftDeletable" << Interface >> {
+        + IsDeleted : bool
+        + DeletedAt : DateTime?
+    }
+
+    interface "IPatientService" << Interface >> {
+        + GetAllAsync(pagination: PaginationRequest) : Task<Result<PagedResponse<PatientResponse>>>
+        + GetByIdAsync(id: int) : Task<Result<PatientResponse>>
+        + CreateAsync(request: CreatePatientRequest) : Task<Result<PatientResponse>>
+        + UpdateAsync(id: int, request: UpdatePatientRequest) : Task<Result<PatientResponse>>
+        + DeleteAsync(id: int) : Task<Result<bool>>
+    }
+
+    interface "IAuthService" << Interface >> {
+        + RegisterAsync(req: RegisterRequest) : Task<Result<AuthResponse>>
+        + LoginAsync(req: LoginRequest) : Task<Result<AuthResponse>>
+        + RefreshTokenAsync(token: string) : Task<Result<AuthResponse>>
+        + RevokeTokenAsync(token: string) : Task<Result<bool>>
+        + AssignRoleAsync(userId: string, req: AssignRoleRequest) : Task<Result<bool>>
+    }
+}
+
+package "ClinicManagementAPI.Core.Models" #0D1117 {
+
+    enum "<color:#58A6FF><&list></color> Gender" << Enum >> {
+        Male
+        Female
+    }
+
+    class "<color:#3FB950><&box></color> Result<T>" << (S,#3FB950) Structure >> {
+        + IsSuccess : bool
+        + Value : T
+        + Error : string
+        + StatusCode : int
+        {static} + Success(value: T) : Result<T>
+        {static} + Failure(error: string, code: int) : Result<T>
+    }
+
+    class "<color:#E6EDF3><&person></color> ApplicationUser" << (E,#D29922) Entity >> {
+        + FullName : string
+        + CreatedAt : DateTime
+        -- Identity Properties --
+        + Email : string
+        + UserName : string
+    }
+
+    class "<color:#58A6FF><&medical-cross></color> Patient" << (E,#D29922) Entity >> {
+        + Id : int
+        + FullName : string
+        + Email : string
+        + Phone : string
+        + DateOfBirth : DateOnly
+        + Gender : Gender
+        + Address : string?
+        + CreatedAt : DateTime
+        + UpdatedAt : DateTime?
+        -- Optional FK --
+        + UserId : string?
+        -- ISoftDeletable --
+        + IsDeleted : bool
+        + DeletedAt : DateTime?
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs.Patients" #161B22 {
+
+    class "CreatePatientRequest" << DTO >> {
+        + FullName : string «Required, MinLen(2), MaxLen(100)»
+        + Email : string «Required, EmailAddress»
+        + Phone : string «Required, Phone»
+        + Gender : Gender «Required»
+        + DateOfBirth : DateOnly «Required»
+        + Address : string? «MaxLen(250)»
+    }
+
+    class "UpdatePatientRequest" << DTO >> {
+        + FullName : string? «MinLen(2), MaxLen(100)»
+        + Email : string? «EmailAddress»
+        + Phone : string? «Phone»
+        + Gender : Gender? 
+        + DateOfBirth : DateOnly?
+        + Address : string? «MaxLen(250)»
+    }
+
+    class "PatientResponse" << DTO >> {
+        + Id : int
+        + FullName : string
+        + Email : string
+        + Phone : string
+        + Gender : string
+        + DateOfBirth : DateOnly
+        + Address : string?
+        + CreatedAt : DateTime
+        + UpdatedAt : DateTime?
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs" #161B22 {
+
+    class "PaginationRequest" << DTO >> {
+        + Page : int «default=1, Range(1,∞)»
+        + PageSize : int «default=10, Range(1,50)»
+        + SearchTerm : string?
+    }
+
+    class "PagedResponse<T>" << DTO >> {
+        + Items : IEnumerable<T>
+        + Page : int
+        + PageSize : int
+        + TotalCount : int
+        + TotalPages : int «computed»
+        + HasNext : bool «computed»
+        + HasPrevious : bool «computed»
+    }
+
+    class "AssignRoleRequest" << DTO >> {
+        + Role : string «Required, MinLen(2), MaxLen(100)»
+    }
+}
+
+' === Relationships ===
+
+' (1) Patient implements ISoftDeletable
+Patient .up.|> ISoftDeletable : " (1) Implements "
+
+' (2) Patient uses Gender enum
+Patient -[#58A6FF]right-> Gender : " (2) Uses "
+
+' (3) Patient has optional FK to ApplicationUser
+Patient "0..*" --o "0..1" ApplicationUser : " (3) Optional FK (UserId) "
+
+' (4) PatientService implements IPatientService
+"ClinicManagementAPI.Core.Services.PatientService" .up.|> IPatientService : " (4) Realizes "
+
+' (5) IPatientService returns Result<T>
+IPatientService -[#3FB950]right-> "Result<T>" : " (5) Wraps "
+
+' (6) Service consumes DTOs
+CreatePatientRequest -[#58A6FF]right-> IPatientService : " (6) Input "
+UpdatePatientRequest -[#58A6FF]right-> IPatientService : " (6) Input "
+IPatientService -[#58A6FF]down-> PatientResponse : " (6) Output "
+
+' (7) Pagination flow
+PaginationRequest -[#58A6FF]right-> IPatientService : " (7) Input "
+IPatientService -[#58A6FF]down-> "PagedResponse<T>" : " (7) Wraps Output "
+
+' (8) AssignRole on AuthService
+AssignRoleRequest -[#58A6FF]right-> IAuthService : " (8) Input "
+
+' === Notes ===
+
+note top of Patient
+    Email has **Filtered Unique Index**
+    (IsDeleted = 0) at database level.
+    Global Query Filter auto-excludes
+    deleted patients from queries.
+end note
+
+note bottom of ISoftDeletable
+    Reusable contract for soft delete.
+    Used by Patient (Sprint 3) and
+    Doctor (Sprint 4).
+end note
+
+note right of UpdatePatientRequest
+    All fields optional for
+    **partial update**. Service
+    rejects if all fields are null.
+end note
+
+@enduml
