@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -187,5 +187,30 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
+    }
+
+    // Assign a role to a user — Admin only
+    public async Task<Result<bool>> AssignRoleAsync(string userId, AssignRoleRequest request)
+    {
+        // Find user by ID
+        ApplicationUser? user = await userManager.FindByIdAsync(userId);
+
+        if (user is null)
+            return Result<bool>.Failure("User not found", 404);
+
+        // Validate role exists in AppRoles
+        string[] validRoles = [AppRoles.Admin, AppRoles.Receptionist, AppRoles.Patient];
+
+        if (!validRoles.Contains(request.Role))
+            return Result<bool>.Failure("Invalid role", 400);
+
+        // Remove all current roles
+        IList<string> currentRoles = await userManager.GetRolesAsync(user);
+        await userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        // Assign new role
+        await userManager.AddToRoleAsync(user, request.Role);
+
+        return Result<bool>.Success(true);
     }
 }

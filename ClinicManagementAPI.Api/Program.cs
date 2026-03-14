@@ -112,6 +112,9 @@ app.MapAuthEndpoints();
 // Map patient endpoints
 app.MapPatientEndpoints();
 
+// Map user endpoints (role management)
+app.MapUserEndpoints();
+
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
