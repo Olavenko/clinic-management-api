@@ -1,6 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
-namespace ClinicManagementAPI.Api.DTOs;
+namespace ClinicManagementAPI.Core.DTOs;
 
 // Reusable pagination + search DTO — used by Patients, Doctors, Appointments
 public class PaginationRequest
