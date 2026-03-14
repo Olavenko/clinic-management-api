@@ -109,6 +109,9 @@ app.MapGet("/weatherforecast", () =>
 // Map auth endpoints (register, login, refresh, logout)
 app.MapAuthEndpoints();
 
+// Map patient endpoints
+app.MapPatientEndpoints();
+
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
