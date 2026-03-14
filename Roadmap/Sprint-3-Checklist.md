@@ -1,4 +1,4 @@
-# Sprint 3 — Patients CRUD + Role-based Authorization + Assign Role
+﻿# Sprint 3 — Patients CRUD + Role-based Authorization + Assign Role
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -14,12 +14,12 @@
 **Goal:** Define a reusable interface for Soft Delete — used by Patient now and Doctor in Sprint 4
 
 ```markdown
-[ ] Create ISoftDeletable interface in Core/Interfaces/
+[x] Create ISoftDeletable interface in Core/Interfaces/
     Properties:
     - IsDeleted (bool)
     - DeletedAt (DateTime, nullable)
 
-[ ] This interface will be used by:
+[x] This interface will be used by:
     - Patient model (this sprint)
     - Doctor model (Sprint 4)
     - Any future entity that needs soft delete
