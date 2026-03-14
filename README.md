@@ -1,4 +1,4 @@
-# 🏥 Clinic Management API
+﻿# 🏥 Clinic Management API
 
 A RESTful API built with **ASP.NET Core Minimal API** for managing clinic appointments, patients, and doctors.
 
