@@ -435,6 +435,7 @@ docker-compose.override.yml
 
 # Test Coverage Reports
 coveragereport/
+coverage-report/
 **/TestResults/
 
 # Local test outputs

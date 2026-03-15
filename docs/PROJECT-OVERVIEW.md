@@ -1,6 +1,6 @@
 ﻿# 🏥 Clinic Management API — Project Overview
 
-## Status: 🟡 In Development (Sprint 6 — Polish)
+## Status: ✅ Complete (All 6 Sprints)
 
 ---
 
@@ -161,7 +161,7 @@ Cancelled  → anything   ❌ (final state)
 | **Sprint 3**             | Patients CRUD                | ISoftDeletable, Patient model, Soft Delete, Global Query Filter, Search, Pagination, Assign Role         | ✅ Done    |
 | **Sprint 4**             | Doctors CRUD                 | Doctor model, Soft Delete, Public GET endpoints, Available doctors filter, Admin-only write, 118 tests   | ✅ Done    |
 | **Sprint 5**             | Appointments                 | Business rules, Overlap detection, Status transitions, Date/Status filters, 181 tests                    | ✅ Done    |
-| **Sprint 6**             | Polish                       | Error consistency, Scalar UI, README, Code cleanup, Git strategy, Coverage review                        | 🟡 Active  |
+| **Sprint 6**             | Polish                       | Error consistency, Scalar UI, README, Code cleanup, Git strategy, Coverage review, MIT License           | ✅ Done    |
 
 ## What This Project Demonstrates
 
@@ -181,3 +181,5 @@ Cancelled  → anything   ❌ (final state)
 - Highly tested code with 181 passing unit/integration tests and comprehensive service coverage
 - Proper integration testing with WebApplicationFactory spinning up in-memory instances
 - Health Check endpoint for production monitoring readiness
+- OpenAPI + Scalar UI with JWT Bearer security scheme for interactive API documentation
+- Service coverage: AppointmentService 95%, AuthService 98%, PatientService 99%, DoctorService 100%

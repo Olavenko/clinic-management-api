@@ -1,12 +1,14 @@
 using System.Text;
 using System.Threading.RateLimiting;
 
-using Microsoft.AspNetCore.RateLimiting;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+
+using Scalar.AspNetCore;
 
 using ClinicManagementAPI.Api.Endpoints;
 using ClinicManagementAPI.Api.Middleware;
@@ -18,7 +20,26 @@ using ClinicManagementAPI.Core.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. Infrastructure & Core Services ---
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, ct) =>
+    {
+        document.Info.Title = "Clinic Management API";
+        document.Info.Version = "v1";
+        document.Info.Description = "A RESTful API for managing clinic appointments, patients, and doctors.";
+
+        var components = document.Components ??= new OpenApiComponents();
+        components.SecuritySchemes!["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Enter your JWT token"
+        };
+
+        return Task.CompletedTask;
+    });
+});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("ClinicDb");
@@ -89,6 +110,15 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "Clinic Management API";
+        options.Theme = ScalarTheme.Purple;
+        options.Authentication = new ScalarAuthenticationOptions
+        {
+            PreferredSecuritySchemes = ["Bearer"]
+        };
+    });
 }
 
 app.UseHttpsRedirection();
