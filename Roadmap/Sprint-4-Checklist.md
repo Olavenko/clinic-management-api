@@ -1,4 +1,4 @@
-# Sprint 4 — Doctors CRUD
+﻿# Sprint 4 — Doctors CRUD
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -14,7 +14,8 @@
 **Goal:** Define the Doctor entity with Soft Delete support (reusing ISoftDeletable from Sprint 3)
 
 ```markdown
-[ ] Create Doctor model in Core/Models/
+[x] Create Doctor model in Core/Models/
+    Command: New-Item -Path "Core/Models/Doctor.cs" -ItemType File -Force
     Implements: ISoftDeletable
     Properties:
     - Id (int)
@@ -30,20 +31,20 @@
     - IsDeleted (bool, default = false) ← from ISoftDeletable
     - DeletedAt (DateTime, nullable)    ← from ISoftDeletable
 
-[ ] Configure Doctor entity in AppDbContext OnModelCreating
+[x] Configure Doctor entity in AppDbContext OnModelCreating
     - Filtered Unique Index on Email: .HasIndex(d => d.Email).IsUnique().HasFilter("IsDeleted = 0")
     - Global Query Filter: .HasQueryFilter(d => !d.IsDeleted)
 
     ⚠️ Same pattern as Patient — only active emails must be unique
 
-[ ] Add Doctors DbSet to AppDbContext
+[x] Add Doctors DbSet to AppDbContext
     public DbSet<Doctor> Doctors => Set<Doctor>();
 
-[ ] Add Doctor Migration
+[x] Add Doctor Migration
     Command: dotnet ef migrations add AddDoctors --project ClinicManagementAPI.Core
                                                  --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[x] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
 ```

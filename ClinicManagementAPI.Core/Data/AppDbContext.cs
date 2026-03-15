@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<Doctor> Doctors => Set<Doctor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 
             // Global query filter: automatically exclude soft-deleted patients
             entity.HasQueryFilter(p => !p.IsDeleted);
+        });
+
+        // Doctor configuration
+        modelBuilder.Entity<Doctor>(entity =>
+        {
+            // Filtered unique index: only active (non-deleted) emails must be unique
+            entity.HasIndex(d => d.Email)
+                  .IsUnique()
+                  .HasFilter("IsDeleted = 0");
+
+            // Global query filter: automatically exclude soft-deleted doctors
+            entity.HasQueryFilter(d => !d.IsDeleted);
         });
     }
 }
