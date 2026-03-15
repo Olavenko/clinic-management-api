@@ -19,17 +19,19 @@ A RESTful API built with **ASP.NET Core Minimal API** for managing clinic appoin
 
 ```markdown
 ClinicManagementAPI/
-├── ClinicManagementAPI.Api/          # API layer (endpoints, middleware, DTOs)
-│   ├── DTOs/                         # Data Transfer Objects
-│   ├── Endpoints/                    # Minimal API endpoint definitions
-│   ├── Middleware/                   # Global exception handling
+├── ClinicManagementAPI.Api/          # API layer (depends on Core)
+│   ├── Endpoints/                    # Static classes with MapXxxEndpoints()
+│   ├── Filters/                      # ValidationFilter<T> (Data Annotations)
+│   ├── Middleware/                   # GlobalExceptionHandler (IExceptionHandler)
 │   └── Program.cs                    # App entry point & service registration
 │
-├── ClinicManagementAPI.Core/         # Core/business layer
-│   ├── Data/                         # EF Core DbContext
-│   ├── Interfaces/                   # Service contracts
-│   ├── Models/                       # Domain entities
-│   └── Services/                     # Business logic
+├── ClinicManagementAPI.Core/         # Core/business layer (knows nothing about Web)
+│   ├── Data/                         # AppDbContext, DatabaseSeeder
+│   ├── DTOs/                         # All DTOs (Auth/, Patients/, Doctors/)
+│   ├── Interfaces/                   # Service contracts (IAuthService, IPatientService, IDoctorService)
+│   ├── Models/                       # Entities, enums, Result<T>, JwtSettings
+│   ├── Services/                     # AuthService, PatientService, DoctorService
+│   └── Migrations/                   # EF Core migrations
 │
 ├── ClinicManagementAPI.Tests/        # Test project
 │   ├── Unit/                         # Unit tests
@@ -56,6 +58,7 @@ Comprehensive UML documentation is maintained in the `docs/uml/` directory, crea
 - **Sprint 1**: Layered Architecture & CI Pipeline Component Diagram (`docs/uml/sprint1/`)
 - **Sprint 2**: Authentication Sequence, Use Case, and Class Diagrams (`docs/uml/sprint2/`)
 - **Sprint 3**: Patients CRUD Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint3/`)
+- **Sprint 4**: Doctors CRUD Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint4/`)
 
 High-fidelity `.svg` vector images with built-in OpenIconic sprites are exported into the respective `exports/` subfolders for easy viewing. Learn how to generate or modify these diagrams by reading `docs/uml/Diagrams-Readme.md`.
 
@@ -103,7 +106,7 @@ The API will start at `https://localhost:5001` (or the port configured in `launc
 - [x] **Sprint 1** — Project Setup + CI (Build) *(Completed: 2026-03-10)*
 - [x] **Sprint 2** — Authentication (JWT + Refresh Token + Roles Setup) *(Completed: 2026-03-14)*
 - [x] **Sprint 3** — Patients CRUD + Role-based Authorization + Assign Role *(Completed: 2026-03-14)*
-- [ ] **Sprint 4** — Doctors CRUD *(In Progress)*
+- [x] **Sprint 4** — Doctors CRUD + Public GET + Admin Write + Soft Delete *(Completed: 2026-03-15)*
 - [ ] **Sprint 5** — Appointments + Business Logic *(Planned)*
 - [ ] **Sprint 6** — Polish + Documentation + Coverage Review *(Planned)*
 
@@ -123,8 +126,12 @@ The API will start at `https://localhost:5001` (or the port configured in `launc
 | `POST`   | `/api/patients`          | Add a new patient                         |
 | `PUT`    | `/api/patients/{id}`     | Update an existing patient                |
 | `DELETE` | `/api/patients/{id}`     | Soft delete a patient                     |
-
-> More endpoints will be added in upcoming sprints.
+| `GET`    | `/api/doctors`           | Get a paginated list of doctors (public)  |
+| `GET`    | `/api/doctors/available` | Get available doctors only (public)       |
+| `GET`    | `/api/doctors/{id}`      | Get a specific doctor by ID (public)      |
+| `POST`   | `/api/doctors`           | Add a new doctor (Admin only)             |
+| `PUT`    | `/api/doctors/{id}`      | Update an existing doctor (Admin only)    |
+| `DELETE` | `/api/doctors/{id}`      | Soft delete a doctor (Admin only)         |
 
 ## Health Checks
 
@@ -149,11 +156,26 @@ All unhandled exceptions are caught by the `GlobalExceptionHandler` middleware a
 
 Stack traces are **never** exposed to clients.
 
+## Authorization
+
+| Endpoint Group       | Public | Patient | Receptionist | Admin |
+|----------------------|--------|---------|--------------|-------|
+| `GET /api/doctors*`  | Yes    | Yes     | Yes          | Yes   |
+| `POST/PUT/DELETE /api/doctors` | No | No | No          | Yes   |
+| `GET /api/patients*` | No     | No      | Yes          | Yes   |
+| `POST/PUT /api/patients` | No | No      | Yes          | Yes   |
+| `DELETE /api/patients` | No   | No      | No           | Yes   |
+| `PUT /api/users/{id}/role` | No | No    | No           | Yes   |
+
+All new registrations default to the **Patient** role.
+
 ## Testing
 
 ```bash
 dotnet test
 ```
+
+**118 tests** (unit + integration) covering Auth, Patient, and Doctor modules. All three services at **100% code coverage**.
 
 Tests are automatically run on every push and pull request via GitHub Actions CI.
 

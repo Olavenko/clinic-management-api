@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace ClinicManagementAPI.Core.DTOs.Doctors;
 
@@ -22,4 +22,6 @@ public class UpdateDoctorRequest
 
     [MaxLength(500)]
     public string? Bio { get; set; }
+
+    public bool? IsAvailable { get; set; }
 }

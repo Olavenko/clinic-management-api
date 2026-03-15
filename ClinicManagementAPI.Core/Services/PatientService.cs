@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
@@ -5,18 +6,18 @@ using ClinicManagementAPI.Core.DTOs.Patients;
 using ClinicManagementAPI.Core.Interfaces;
 using ClinicManagementAPI.Core.Models;
 
-using Microsoft.EntityFrameworkCore;
-
 namespace ClinicManagementAPI.Core.Services;
 
 public class PatientService(AppDbContext context) : IPatientService
 {
-    public async Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(PaginationRequest pagination)
+    public async Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(
+        PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        // Start with IQueryable — no data fetched yet (just building the SQL)
+        if (pagination.Page < 1) pagination.Page = 1;
+        if (pagination.PageSize < 1) pagination.PageSize = 10;
+
         IQueryable<Patient> query = context.Patients;
 
-        // Apply search filter if SearchTerm is provided
         if (!string.IsNullOrEmpty(pagination.SearchTerm))
         {
             string searchTerm = pagination.SearchTerm.Trim();
@@ -27,21 +28,18 @@ public class PatientService(AppDbContext context) : IPatientService
                 p.Phone.Contains(searchTerm));
         }
 
-        // Get total count before pagination (for TotalCount and TotalPages)
-        int totalCount = await query.CountAsync();
+        int totalCount = await query.CountAsync(cancellationToken);
 
-        // Apply ordering and pagination, then fetch from database
         List<Patient> patientEntities = await query
             .OrderBy(p => p.FullName)
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         List<PatientResponse> patients = patientEntities
             .Select(MapToResponse)
             .ToList();
 
-        // Build paged response
         var response = new PagedResponse<PatientResponse>
         {
             Items = patients,
@@ -53,11 +51,12 @@ public class PatientService(AppDbContext context) : IPatientService
         return Result<PagedResponse<PatientResponse>>.Success(response);
     }
 
-    public async Task<Result<PatientResponse>> GetByIdAsync(int id)
+    public async Task<Result<PatientResponse>> GetByIdAsync(
+        int id, CancellationToken cancellationToken = default)
     {
-        // Use FirstOrDefaultAsync instead of FindAsync to apply Global Query Filter
+        // FirstOrDefaultAsync (not FindAsync) to apply the global soft-delete query filter
         Patient? patient = await context.Patients
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
         if (patient is null)
             return Result<PatientResponse>.Failure("Patient not found", 404);
@@ -67,17 +66,17 @@ public class PatientService(AppDbContext context) : IPatientService
         return Result<PatientResponse>.Success(response);
     }
 
-    public async Task<Result<PatientResponse>> CreateAsync(CreatePatientRequest request)
+    public async Task<Result<PatientResponse>> CreateAsync(
+        CreatePatientRequest request, CancellationToken cancellationToken = default)
     {
-        // Check email uniqueness across ALL patients (including deleted)
+        // IgnoreQueryFilters: prevent email reuse even if prior record was soft-deleted
         bool emailExists = await context.Patients
             .IgnoreQueryFilters()
-            .AnyAsync(p => p.Email == request.Email);
+            .AnyAsync(p => p.Email == request.Email, cancellationToken);
 
         if (emailExists)
             return Result<PatientResponse>.Failure("Email already registered", 400);
 
-        // Map DTO to entity
         var patient = new Patient
         {
             FullName = request.FullName,
@@ -90,17 +89,16 @@ public class PatientService(AppDbContext context) : IPatientService
         };
 
         context.Patients.Add(patient);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
-        // Map entity to response
         var response = MapToResponse(patient);
 
         return Result<PatientResponse>.Success(response);
     }
 
-    public async Task<Result<PatientResponse>> UpdateAsync(int id, UpdatePatientRequest request)
+    public async Task<Result<PatientResponse>> UpdateAsync(
+        int id, UpdatePatientRequest request, CancellationToken cancellationToken = default)
     {
-        // Validate at least one field is provided
         bool allFieldsNull =
             request.FullName is null &&
             request.Email is null &&
@@ -112,25 +110,23 @@ public class PatientService(AppDbContext context) : IPatientService
         if (allFieldsNull)
             return Result<PatientResponse>.Failure("At least one field must be provided", 400);
 
-        // Find patient (Global Query Filter applies)
         Patient? patient = await context.Patients
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
         if (patient is null)
             return Result<PatientResponse>.Failure("Patient not found", 404);
 
-        // If email is being changed, check for duplicates (across all patients, exclude self)
+        // IgnoreQueryFilters: prevent email reuse even if prior record was soft-deleted
         if (request.Email is not null && request.Email != patient.Email)
         {
             bool emailExists = await context.Patients
                 .IgnoreQueryFilters()
-                .AnyAsync(p => p.Email == request.Email && p.Id != id);
+                .AnyAsync(p => p.Email == request.Email && p.Id != id, cancellationToken);
 
             if (emailExists)
                 return Result<PatientResponse>.Failure("Email already registered", 400);
         }
 
-        // Update only provided fields (partial update)
         if (request.FullName is not null) patient.FullName = request.FullName;
         if (request.Email is not null) patient.Email = request.Email;
         if (request.Phone is not null) patient.Phone = request.Phone;
@@ -140,33 +136,30 @@ public class PatientService(AppDbContext context) : IPatientService
 
         patient.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
-        // Map entity to response
         var response = MapToResponse(patient);
 
         return Result<PatientResponse>.Success(response);
     }
 
-    public async Task<Result<bool>> DeleteAsync(int id)
+    public async Task<Result<bool>> DeleteAsync(
+        int id, CancellationToken cancellationToken = default)
     {
-        // Find patient (Global Query Filter applies)
         Patient? patient = await context.Patients
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
         if (patient is null)
             return Result<bool>.Failure("Patient not found", 404);
 
-        // Soft delete
         patient.IsDeleted = true;
         patient.DeletedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result<bool>.Success(true);
     }
 
-    // Centralized mapping: Patient entity → PatientResponse DTO
     private static PatientResponse MapToResponse(Patient patient) => new()
     {
         Id = patient.Id,

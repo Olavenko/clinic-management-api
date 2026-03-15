@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ClinicManagementAPI.Core.DTOs;
 
-// Reusable pagination + search DTO — used by Patients, Doctors, Appointments
 public class PaginationRequest
 {
     [Range(1, int.MaxValue)]

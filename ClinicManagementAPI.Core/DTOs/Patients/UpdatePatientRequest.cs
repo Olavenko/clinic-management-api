@@ -4,7 +4,6 @@ using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Core.DTOs.Patients;
 
-// DTO for updating a patient — all fields optional for partial update
 // At least one field must be provided (validated in PatientService)
 public class UpdatePatientRequest
 {

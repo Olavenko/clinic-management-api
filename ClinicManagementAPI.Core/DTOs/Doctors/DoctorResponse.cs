@@ -1,7 +1,6 @@
-﻿namespace ClinicManagementAPI.Core.DTOs.Doctors;
+namespace ClinicManagementAPI.Core.DTOs.Doctors;
 
-// Response shape returned to the API consumer
-// No IsDeleted or DeletedAt — these are internal fields
+// No IsDeleted or DeletedAt — these are internal fields not exposed to clients
 public class DoctorResponse
 {
     public int Id { get; set; }

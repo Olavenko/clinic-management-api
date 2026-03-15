@@ -2,21 +2,21 @@
 ' -------------------------------------------------------
 ' File: component.puml
 ' -------------------------------------------------------
-' Purpose   : Component — Updated Architecture with Patient CRUD & User Management
+' Purpose   : Component — Updated Architecture with Doctor CRUD
 ' Layer     : Docs (UML)
 ' Author    : Mohamed Ali
-' Created   : 2026-03-14
-' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' Created   : 2026-03-15
+' Sprint    : 4 — Doctors CRUD + Role-based Authorization
 ' -------------------------------------------------------
 
 !define USE_CUSTOM_THEME
 !include ../config/style.puml
 
-title Component — Patient CRUD & Role Authorization Architecture (Sprint 3)
+title Component — Doctor CRUD & Architecture Overview (Sprint 4)
 
 ' === Header/Footer ===
 header Clinic Management System - Architecture Overview
-footer Sprint 3 — Patients CRUD + Assign Role
+footer Sprint 4 — Doctors CRUD (Public GET + Admin Write)
 
 ' === Layout Settings ===
 left to right direction
@@ -26,7 +26,7 @@ skinparam ranksep 50
 ' === External/CI Layer ===
 cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
     component "<color:#58A6FF><&cog></color> GitHub Actions" as CI << CI/CD >> #0D1117
-    note bottom of CI: Build, Lint, Test\n(dotnet build/test)
+    note bottom of CI: Build, Lint, Test\n(dotnet build/test)\n118 tests
 }
 
 ' === Application System ===
@@ -35,6 +35,7 @@ package "ClinicManagementAPI System" #0D1117 {
     package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
         component "<color:#F85149><&shield></color> AuthEndpoints" as AUTH_ENDP << Minimal API >>
         component "<color:#F85149><&shield></color> PatientEndpoints" as PAT_ENDP << Minimal API >>
+        component "<color:#3FB950><&shield></color> DoctorEndpoints" as DOC_ENDP << Minimal API >>
         component "<color:#F85149><&shield></color> UserEndpoints" as USR_ENDP << Minimal API >>
         component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
         component "ValidationFilter" as FILT << EndpointFilter >>
@@ -43,8 +44,10 @@ package "ClinicManagementAPI System" #0D1117 {
     package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {
         component "<color:#3FB950><&cog></color> AuthService" as AUTH_SVC << Service >>
         component "<color:#3FB950><&cog></color> PatientService" as PAT_SVC << Service >>
+        component "<color:#3FB950><&cog></color> DoctorService" as DOC_SVC << Service >>
         interface "IAuthService" as AUTH_INTF << Interface >>
         interface "IPatientService" as PAT_INTF << Interface >>
+        interface "IDoctorService" as DOC_INTF << Interface >>
 
         folder "Data" as DATA_FOLDER {
             component "<color:#D29922><&hard-drive></color> AppDbContext" as DATA << Persistence >>
@@ -85,43 +88,57 @@ CLIENT -[#58A6FF]right-> AUTH_ENDP : " (4) Auth Requests "
 ' (5) Assign Role
 CLIENT -[#58A6FF]right-> USR_ENDP : " (5) Assign Role "
 
-' (6) JWT + Role Check
-MW -[#58A6FF]down-> PAT_ENDP : " (6) JWT + Role Check "
+' (6) Doctor CRUD
+CLIENT -[#3FB950]right-> DOC_ENDP : " (6) Doctor CRUD\n(GET=Public, Write=Admin) "
 
-' (7) Validates
-FILT -[#58A6FF]down-> DTO : " (7) Validates "
+' (7) JWT + Role Check
+MW -[#58A6FF]down-> PAT_ENDP : " (7) JWT + Role Check "
+MW -[#58A6FF]down-> DOC_ENDP : " (7) JWT (Write only) "
 
-' (8) Injects Patient Service
-PAT_ENDP -[#58A6FF]down-> PAT_INTF : " (8) Injects "
+' (8) Validates
+FILT -[#58A6FF]down-> DTO : " (8) Validates "
 
-' (9) Implements Patient Service
-PAT_SVC .[#3FB950]left.|> PAT_INTF : " (9) Implements "
+' (9) Injects Patient Service
+PAT_ENDP -[#58A6FF]down-> PAT_INTF : " (9) Injects "
 
-' (10) Injects Auth Service
-AUTH_ENDP -[#58A6FF]down-> AUTH_INTF : " (10) Injects "
+' (10) Implements Patient Service
+PAT_SVC .[#3FB950]left.|> PAT_INTF : " (10) Implements "
 
-' (11) Injects Auth Service
-USR_ENDP -[#58A6FF]down-> AUTH_INTF : " (11) Injects "
+' (11) Injects Doctor Service
+DOC_ENDP -[#58A6FF]down-> DOC_INTF : " (11) Injects "
 
-' (12) Implements Auth Service
-AUTH_SVC .[#3FB950]left.|> AUTH_INTF : " (12) Implements "
+' (12) Implements Doctor Service
+DOC_SVC .[#3FB950]left.|> DOC_INTF : " (12) Implements "
 
-' (13) Persists via
-PAT_SVC -[#3FB950]down-> DATA : " (13) Persists via "
+' (13) Injects Auth Service
+AUTH_ENDP -[#58A6FF]down-> AUTH_INTF : " (13) Injects "
 
-' (14) Manipulates
-PAT_SVC -[#3FB950]down-> MOD : " (14) Manipulates "
+' (14) Injects Auth Service
+USR_ENDP -[#58A6FF]down-> AUTH_INTF : " (14) Injects "
 
-' (15) EF Core 10
-DATA -[#A371F7]down-> DB : " (15) EF Core 10 "
+' (15) Implements Auth Service
+AUTH_SVC .[#3FB950]left.|> AUTH_INTF : " (15) Implements "
 
-' (16) Stores Users
-DATA -[#A371F7]right-> IDENTITY : " (16) Stores Users "
+' (16) Persists via
+PAT_SVC -[#3FB950]down-> DATA : " (16) Persists via "
+DOC_SVC -[#3FB950]down-> DATA : " (16) Persists via "
 
-' (17) Mocks & Tests
-UT .[#F85149]up.> PAT_SVC : " (17) Mocks & Tests "
+' (17) Manipulates
+PAT_SVC -[#3FB950]down-> MOD : " (17) Manipulates "
+DOC_SVC -[#3FB950]down-> MOD : " (17) Manipulates "
 
-' (18) WebApplicationFactory
-IT .[#F85149]up.> PAT_ENDP : " (18) WebApplicationFactory "
+' (18) EF Core 10
+DATA -[#A371F7]down-> DB : " (18) EF Core 10 "
+
+' (19) Stores Users
+DATA -[#A371F7]right-> IDENTITY : " (19) Stores Users "
+
+' (20) Mocks & Tests
+UT .[#F85149]up.> PAT_SVC : " (20) Tests "
+UT .[#F85149]up.> DOC_SVC : " (20) Tests "
+
+' (21) WebApplicationFactory
+IT .[#F85149]up.> PAT_ENDP : " (21) WebApplicationFactory "
+IT .[#F85149]up.> DOC_ENDP : " (21) WebApplicationFactory "
 
 @enduml

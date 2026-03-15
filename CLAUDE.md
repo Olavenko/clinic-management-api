@@ -149,6 +149,8 @@ Each entity has a static class with `MapXxxEndpoints(this WebApplication app)` e
 - One class per file (file name = class name)
 - Comments explain WHY, not WHAT
 - Conventional commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`
+- File member ordering: private fields → constructor → public methods (interface order) → private helpers
+- Using directive ordering: `System.*` → `Microsoft.*` → `ClinicManagementAPI.*` (blank line between groups, alphabetized within)
 
 ## Patterns for New Entities (Sprint 4-5)
 

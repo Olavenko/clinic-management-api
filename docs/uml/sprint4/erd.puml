@@ -2,21 +2,21 @@
 ' -------------------------------------------------------
 ' File: erd.puml
 ' -------------------------------------------------------
-' Purpose   : ERD — Database Schema with Patient Table & Identity Tables
+' Purpose   : ERD — Database Schema with Doctor Table added
 ' Layer     : Docs (UML)
 ' Author    : Mohamed Ali
-' Created   : 2026-03-14
-' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' Created   : 2026-03-15
+' Sprint    : 4 — Doctors CRUD + Role-based Authorization
 ' -------------------------------------------------------
 
 !define USE_CUSTOM_THEME
 !include ../config/style.puml
 
-title ERD — Database Schema (Sprint 3)
+title ERD — Database Schema (Sprint 4)
 
 ' === Header/Footer ===
 header Clinic Management System - Database Design
-footer Sprint 3 — Patient & Identity Tables
+footer Sprint 4 — Patient, Doctor & Identity Tables
 
 ' === Layout Settings ===
 skinparam nodesep 80
@@ -39,6 +39,26 @@ package "Patient Management" #0D1117 {
         UpdatedAt : datetime2 <<nullable>>
         --
         UserId : nvarchar(450) <<FK, nullable>>
+        --
+        * IsDeleted : bit <<default: 0>>
+        DeletedAt : datetime2 <<nullable>>
+    }
+}
+
+package "Doctor Management" #0D1117 {
+
+    entity "<color:#3FB950><&stethoscope></color> Doctors" as DOCTORS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * FullName : nvarchar(100)
+        * Email : nvarchar(450) <<UK, Filtered: IsDeleted=0>>
+        * Phone : nvarchar(max)
+        * Specialization : nvarchar(100)
+        * YearsOfExperience : int
+        Bio : nvarchar(500) <<nullable>>
+        * IsAvailable : bit <<default: 1>>
+        * CreatedAt : datetime2
+        UpdatedAt : datetime2 <<nullable>>
         --
         * IsDeleted : bit <<default: 0>>
         DeletedAt : datetime2 <<nullable>>
@@ -89,10 +109,10 @@ package "ASP.NET Core Identity" #161B22 {
 ' === Relationships ===
 
 ' (1) Patient optionally links to a User
-PATIENTS }o..|| USERS : " (1) Optional FK\n(UserId → Id) "
+PATIENTS }o..|| USERS : " (1) Optional FK\n(UserId -> Id) "
 
 ' (2) User has many Refresh Tokens
-USERS ||--o{ TOKENS : " (2) Owns\n(UserId → Id) "
+USERS ||--o{ TOKENS : " (2) Owns\n(UserId -> Id) "
 
 ' (3) User-Role junction: Assigned
 USERS ||--o{ USER_ROLES : " (3) Assigned "
@@ -107,32 +127,40 @@ note right of PATIENTS
     ""HasFilter("IsDeleted = 0")""
     ----
     Active emails must be unique.
-    Deleted patient's email does NOT
-    block new registrations in the
-    database — but the **service**
-    checks ALL patients via
+    Service checks ALL patients via
     ""IgnoreQueryFilters()"".
     ----
     **Global Query Filter**:
     ""HasQueryFilter(p => !p.IsDeleted)""
-    Auto-excludes deleted patients.
+end note
+
+note right of DOCTORS
+    **Same soft delete pattern as Patients.**
+    ----
+    **Filtered Unique Index** on Email:
+    ""HasFilter("IsDeleted = 0")""
+    ----
+    **IsAvailable** (default: true)
+    controls appointment booking
+    eligibility (Sprint 5).
+    ----
+    **Global Query Filter**:
+    ""HasQueryFilter(d => !d.IsDeleted)""
+    ----
+    No FK to AspNetUsers — doctors
+    are managed by Admin, not
+    linked to login accounts.
 end note
 
 note bottom of ROLES
     Seeded Roles:
-    • **Admin** — Full access
-    • **Receptionist** — Patient CRUD
-    • **Patient** — Default role
+    * **Admin** — Full access
+    * **Doctor** — (Sprint 5)
+    * **Receptionist** — Patient CRUD
+    * **Patient** — Default role
     ----
     Each user has exactly
     **one role** at a time.
-end note
-
-note left of USER_ROLES
-    Identity manages this
-    junction table. Assign Role
-    endpoint removes all current
-    roles before adding the new one.
 end note
 
 @enduml

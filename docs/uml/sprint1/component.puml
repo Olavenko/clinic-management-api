@@ -33,9 +33,9 @@ cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
 package "ClinicManagementAPI System" #0D1117 {
 
     package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
-        component "<color:#F85149><&shield></color> AuthEndpoints" as ENDP << Controller >>
+        component "<color:#F85149><&shield></color> AuthEndpoints" as ENDP << Minimal API >>
         component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
-        component "ValidationFilter" as FILT << ActionFilter >>
+        component "ValidationFilter" as FILT << EndpointFilter >>
     }
 
     package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {
@@ -66,29 +66,49 @@ actor "Web/Mobile Client" as CLIENT
 
 ' === Relationships ===
 
-' [1-2] CI flow
+' (1) CI flow
 CI -[#39C5CF]down-> API : " (1) Deploys to "
+
+' (2) CI tests
 CI -[#3FB950]down-> TESTS : " (2) Executes "
 
-' [3-6] Request Entry & Validation
+' (3) HTTP Requests
 CLIENT -[#58A6FF]right-> ENDP : " (3) HTTP Requests "
+
+' (4) Filters
 ENDP -[#58A6FF]down-> FILT : " (4) Filters "
+
+' (5) Validates
 FILT -[#58A6FF]right-> DTO : " (5) Validates "
+
+' (6) Maps
 ENDP -[#58A6FF]down-> DTO : " (6) Maps "
 
-' [7-9] Business Logic
+' (7) Injects
 ENDP -[#58A6FF]down-> INTF : " (7) Injects "
+
+' (8) Implements
 SVC .[#3FB950]left.|> INTF : " (8) Implements "
+
+' (9) Authorizes via
 MW -[#58A6FF]down-> SVC : " (9) Authorizes via "
 
-' [10-13] Data & Persistence
+' (10) Persists via
 SVC -[#3FB950]down-> DATA : " (10) Persists via "
+
+' (11) Manipulates
 SVC -[#3FB950]down-> MOD : " (11) Manipulates "
+
+' (12) EF Core 10
 DATA -[#A371F7]down-> DB : " (12) EF Core 10 "
+
+' (13) Stores Users
 DATA -[#A371F7]right-> IDENTITY : " (13) Stores Users "
 
-' [14-15] Quality Assurance
+' (14) Mocks & Tests
 UT .[#F85149]up.> SVC : " (14) Mocks & Tests "
+
+' (15) WebApplicationFactory
 IT .[#F85149]up.> ENDP : " (15) WebApplicationFactory "
 
 @enduml

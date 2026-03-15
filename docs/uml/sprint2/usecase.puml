@@ -41,14 +41,18 @@ package "ClinicManagementAPI" #0D1117 {
     usecase "Manage Security Tokens" as UC_TOK #161B22
 }
 
-' === Relationships (Process Flow) ===
+' === Relationships ===
 
-' (1-2) The Onboarding Entry Point
+' (1) The Onboarding Entry Point: Sign Up
 GUEST --> UC_REG : " (1) Sign Up "
+
+' (2) The Onboarding Entry Point: Login
 GUEST --> UC_LOG : " (2) Credentials "
 
-' (3-4) Session Maintenance
+' (3) Session Maintenance: Refresh Token
 USER --> UC_REF : " (3) Keep Token Fresh "
+
+' (4) Session Maintenance: Logout
 USER --> UC_OUT : " (4) End Session "
 
 ' (5) Administrative Management

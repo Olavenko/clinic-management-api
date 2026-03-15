@@ -2,13 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+
 using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.DTOs.Patients;
 using ClinicManagementAPI.Core.Models;
-
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ClinicManagementAPI.Tests.Integration;
 

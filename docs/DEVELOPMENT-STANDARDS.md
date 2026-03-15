@@ -1,4 +1,4 @@
-# Development Standards — Clinic Management API
+﻿# Development Standards — Clinic Management API
 
 > This document defines how code is written in this project.  
 > Machine-enforceable rules live in `.editorconfig` and `Directory.Build.props`.  
@@ -168,6 +168,55 @@ List<string> errors = [error1, error2];
 var roles = new string[] { "Admin", "Receptionist", "Patient" };
 var errors = new List<string> { error1, error2 };
 ```
+
+### 2.8 — File Member Ordering
+
+Within each `.cs` file, members are ordered as follows:
+
+1. **Private readonly fields** (`_context`, `_userManager`)
+2. **Constructor**
+3. **Public methods** (in the same order as the interface)
+4. **Private helper methods**
+
+```csharp
+// ✅ Correct ordering
+public class PatientService : IPatientService
+{
+    private readonly AppDbContext _context;
+
+    public PatientService(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // --- Public methods (match interface order) ---
+    public async Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(...) { ... }
+    public async Task<Result<PatientResponse>> GetByIdAsync(...) { ... }
+    public async Task<Result<PatientResponse>> CreateAsync(...) { ... }
+    public async Task<Result<PatientResponse>> UpdateAsync(...) { ... }
+    public async Task<Result<bool>> DeleteAsync(...) { ... }
+
+    // --- Private helpers ---
+    private static PatientResponse MapToResponse(Patient patient) { ... }
+}
+```
+
+### 2.9 — Using Directive Ordering
+
+```csharp
+// Group 1: System namespaces
+using System.Text;
+
+// Group 2: Microsoft/third-party namespaces
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+// Group 3: Project namespaces
+using ClinicManagementAPI.Core.Models;
+using ClinicManagementAPI.Core.Interfaces;
+```
+
+Each group separated by a blank line, alphabetized within each group.
 
 ---
 
@@ -425,6 +474,16 @@ public interface IPatientService
 // TODO: fix this later
 ```
 
+### 5.4 — Comment Consistency Across Similar Files
+
+Files of the same type must follow the same commenting pattern:
+
+- All Services: same section separators and business rule comments
+- All Interfaces: same XML documentation coverage
+- All Test files: same method grouping comments
+
+If one file of a type has a comment pattern, all siblings must match.
+
 ---
 
 ## 6 — Git Conventions
@@ -528,6 +587,8 @@ Inside each test class, group tests by method:
   // --- CreateAsync ---
   // --- UpdateAsync ---
   // --- DeleteAsync ---
+
+- Use `// ── MethodName ───` as section separators between test groups
 ```
 
 ---

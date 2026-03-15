@@ -1,6 +1,6 @@
-using ClinicManagementAPI.Core.Models;
-
 using Microsoft.AspNetCore.Identity;
+
+using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Core.Data;
 

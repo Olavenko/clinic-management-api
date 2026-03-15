@@ -133,7 +133,8 @@ Better to add it now than revisit DoctorService later ✅
 **Goal:** Implement business logic using Result Pattern — Soft Delete instead of Hard Delete
 
 ```markdown
-[ ] Create DoctorService in Core/Services/
+[x] Create DoctorService in ClinicManagementAPI.Core/Services/
+    Command: New-Item -Path "ClinicManagementAPI.Core/Services/DoctorService.cs" -ItemType File -Force
     Implements IDoctorService
 
     GetAllAsync:
@@ -194,7 +195,7 @@ Better to add it now than revisit DoctorService later ✅
     - Save to Database
     - Return Result.Success(true)
 
-[ ] Register IDoctorService in Program.cs
+[x] Register IDoctorService in Program.cs
     builder.Services.AddScoped<IDoctorService, DoctorService>()
 ```
 
@@ -206,7 +207,8 @@ Better to add it now than revisit DoctorService later ✅
 **Goal:** Expose CRUD endpoints with Role-based protection — same pattern as Patients
 
 ```markdown
-[ ] Create DoctorEndpoints.cs in Api/Endpoints/
+[x] Create DoctorEndpoints.cs in ClinicManagementAPI.Api/Endpoints/
+    Command: New-Item -Path "ClinicManagementAPI.Api/Endpoints/DoctorEndpoints.cs" -ItemType File -Force
 
     GET /api/doctors
     - No JWT required (public endpoint — anyone can see doctors list)
@@ -250,7 +252,7 @@ Better to add it now than revisit DoctorService later ✅
     - Returns 401 if no token
     - Returns 403 if not Admin
 
-[ ] Map Doctor endpoints in Program.cs
+[x] Map Doctor endpoints in Program.cs
     app.MapDoctorEndpoints()
 ```
 
@@ -269,7 +271,7 @@ Admin manages doctors → Login required ✅
 **Goal:** 70%+ coverage — verify CRUD logic, Soft Delete, search, and Authorization rules
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/DoctorServiceTests.cs
+[x] Create Unit Tests in Tests/Unit/DoctorServiceTests.cs
     Test cases:
     — GetAll + Search:
     - GetAllAsync_ReturnsPagedDoctors
@@ -306,7 +308,7 @@ Admin manages doctors → Login required ✅
     - DeleteAsync_DoctorDisappearsFromGetAll
     - DeleteAsync_DoctorDisappearsFromGetAvailable
 
-[ ] Create Integration Tests in Tests/Integration/DoctorEndpointsTests.cs
+[x] Create Integration Tests in Tests/Integration/DoctorEndpointsTests.cs
     Test cases:
     — Public endpoints (no token):
     - GET    /api/doctors            → 200 without token (public)
@@ -338,40 +340,50 @@ Admin manages doctors → Login required ✅
     - GET    /api/doctors/available  → soft-deleted doctor not in available list
     - POST   /api/doctors            → 400 creating doctor with deleted doctor's email
 
-[ ] Run all tests and verify they pass
+[x] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[x] Check coverage
+    Step 1 — Collect coverage data (generates XML):
     Command: dotnet test --collect:"XPlat Code Coverage"
+
+    Step 2 — Install ReportGenerator (one-time):
+    Command: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    Step 3 — Generate HTML report from the XML:
+    Command: reportgenerator -reports:"ClinicManagementAPI.Tests\TestResults\**\coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;TextSummary"
+
+    Step 4 — Open the report in browser:
+    Command: Start-Process "coveragereport\index.html"   
 ```
 
 ---
 
-## Section 7 — CI Update
-
-**Expected Time: 10 minutes**  
-**Goal:** CI pipeline runs all tests including new Doctor and Soft Delete tests
-
-```markdown
-[ ] Push to GitHub and verify:
-    ✅ Build passes
-    ✅ All Auth tests still pass
-    ✅ All Patient tests still pass (including Soft Delete)
-    ✅ All Doctor tests pass (including Soft Delete tests)
-    ✅ Coverage is 70%+
-```
-
----
-
-## Section 8 — Diagrams
+## Section 7 — Diagrams
 
 **Expected Time: 30 minutes**  
 **Goal:** Create and update necessary system diagrams for Sprint 4 features (Doctors CRUD)
 
 ```markdown
-[ ] Review docs/ to determine required diagrams for Sprint 4
-[ ] Update/Create Component/Sequence Diagrams for doctor services
-[ ] Verify PlantUML/Markdown diagrams render correctly
+[x] Review docs/ to determine required diagrams for Sprint 4
+[x] Update/Create Component/Sequence Diagrams for doctor services
+[x] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
+## Section 8 — CI Update
+
+**Expected Time: 10 minutes**  
+**Goal:** CI pipeline runs all tests including new Doctor and Soft Delete tests
+
+```markdown
+[x] Push to GitHub and verify:
+    ✅ Build passes
+    ✅ All Auth tests still pass
+    ✅ All Patient tests still pass (including Soft Delete)
+    ✅ All Doctor tests pass (including Soft Delete tests)
+    ✅ Coverage is 70%+
 ```
 
 ---

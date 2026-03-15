@@ -2,21 +2,21 @@
 ' -------------------------------------------------------
 ' File: class.puml
 ' -------------------------------------------------------
-' Purpose   : Class Diagram — Patient Domain & Service Architecture
+' Purpose   : Class Diagram — Doctor Domain & Service Architecture
 ' Layer     : Docs (UML)
 ' Author    : Mohamed Ali
-' Created   : 2026-03-14
-' Sprint    : 3 — Patients CRUD + Role-based Authorization
+' Created   : 2026-03-15
+' Sprint    : 4 — Doctors CRUD + Role-based Authorization
 ' -------------------------------------------------------
 
 !define USE_CUSTOM_THEME
 !include ../config/style.puml
 
-title Class Diagram — Patient Domain Architecture (Sprint 3)
+title Class Diagram — Doctor Domain Architecture (Sprint 4)
 
 ' === Header/Footer ===
 header Clinic Management System - Domain Model
-footer Patient Module Structural Design
+footer Doctor Module Structural Design
 
 ' === Layout Settings ===
 skinparam groupInheritance 2
@@ -40,6 +40,15 @@ package "ClinicManagementAPI.Core.Interfaces" #161B22 {
         + DeleteAsync(id: int) : Task<Result<bool>>
     }
 
+    interface "IDoctorService" << Interface >> {
+        + GetAllAsync(pagination: PaginationRequest) : Task<Result<PagedResponse<DoctorResponse>>>
+        + GetAvailableAsync(pagination: PaginationRequest) : Task<Result<PagedResponse<DoctorResponse>>>
+        + GetByIdAsync(id: int) : Task<Result<DoctorResponse>>
+        + CreateAsync(request: CreateDoctorRequest) : Task<Result<DoctorResponse>>
+        + UpdateAsync(id: int, request: UpdateDoctorRequest) : Task<Result<DoctorResponse>>
+        + DeleteAsync(id: int) : Task<Result<bool>>
+    }
+
     interface "IAuthService" << Interface >> {
         + RegisterAsync(req: RegisterRequest) : Task<Result<AuthResponse>>
         + LoginAsync(req: LoginRequest) : Task<Result<AuthResponse>>
@@ -50,11 +59,6 @@ package "ClinicManagementAPI.Core.Interfaces" #161B22 {
 }
 
 package "ClinicManagementAPI.Core.Models" #0D1117 {
-
-    enum "<color:#58A6FF><&list></color> Gender" << Enum >> {
-        Male
-        Female
-    }
 
     class "<color:#3FB950><&box></color> Result<T>" << (S,#3FB950) Structure >> {
         + IsSuccess : bool
@@ -89,36 +93,54 @@ package "ClinicManagementAPI.Core.Models" #0D1117 {
         + IsDeleted : bool
         + DeletedAt : DateTime?
     }
-}
 
-package "ClinicManagementAPI.Core.DTOs.Patients" #161B22 {
-
-    class "CreatePatientRequest" << DTO >> {
-        + FullName : string «Required, MinLen(2), MaxLen(100)»
-        + Email : string «Required, EmailAddress»
-        + Phone : string «Required, Phone»
-        + Gender : Gender «Required»
-        + DateOfBirth : DateOnly «Required»
-        + Address : string? «MaxLen(250)»
-    }
-
-    class "UpdatePatientRequest" << DTO >> {
-        + FullName : string? «MinLen(2), MaxLen(100)»
-        + Email : string? «EmailAddress»
-        + Phone : string? «Phone»
-        + Gender : Gender? 
-        + DateOfBirth : DateOnly?
-        + Address : string? «MaxLen(250)»
-    }
-
-    class "PatientResponse" << DTO >> {
+    class "<color:#3FB950><&stethoscope></color> Doctor" << (E,#D29922) Entity >> {
         + Id : int
         + FullName : string
         + Email : string
         + Phone : string
-        + Gender : string
-        + DateOfBirth : DateOnly
-        + Address : string?
+        + Specialization : string
+        + YearsOfExperience : int
+        + Bio : string?
+        + IsAvailable : bool
+        + CreatedAt : DateTime
+        + UpdatedAt : DateTime?
+        -- ISoftDeletable --
+        + IsDeleted : bool
+        + DeletedAt : DateTime?
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs.Doctors" #161B22 {
+
+    class "CreateDoctorRequest" << DTO >> {
+        + FullName : string <<Required, MinLen(2), MaxLen(100)>>
+        + Email : string <<Required, EmailAddress>>
+        + Phone : string <<Required, Phone>>
+        + Specialization : string <<Required, MaxLen(100)>>
+        + YearsOfExperience : int <<Required, Range(0,60)>>
+        + Bio : string? <<MaxLen(500)>>
+    }
+
+    class "UpdateDoctorRequest" << DTO >> {
+        + FullName : string? <<MinLen(2), MaxLen(100)>>
+        + Email : string? <<EmailAddress>>
+        + Phone : string? <<Phone>>
+        + Specialization : string? <<MaxLen(100)>>
+        + YearsOfExperience : int? <<Range(0,60)>>
+        + Bio : string? <<MaxLen(500)>>
+        + IsAvailable : bool?
+    }
+
+    class "DoctorResponse" << DTO >> {
+        + Id : int
+        + FullName : string
+        + Email : string
+        + Phone : string
+        + Specialization : string
+        + YearsOfExperience : int
+        + Bio : string?
+        + IsAvailable : bool
         + CreatedAt : DateTime
         + UpdatedAt : DateTime?
     }
@@ -127,8 +149,8 @@ package "ClinicManagementAPI.Core.DTOs.Patients" #161B22 {
 package "ClinicManagementAPI.Core.DTOs" #161B22 {
 
     class "PaginationRequest" << DTO >> {
-        + Page : int «default=1, Range(1,∞)»
-        + PageSize : int «default=10, Range(1,50)»
+        + Page : int <<default=1, Range(1,+inf)>>
+        + PageSize : int <<default=10, Range(1,50)>>
         + SearchTerm : string?
     }
 
@@ -137,37 +159,9 @@ package "ClinicManagementAPI.Core.DTOs" #161B22 {
         + Page : int
         + PageSize : int
         + TotalCount : int
-        + TotalPages : int «computed»
-        + HasNext : bool «computed»
-        + HasPrevious : bool «computed»
-    }
-}
-
-package "ClinicManagementAPI.Core.DTOs.Auth" #161B22 {
-    
-    class "RegisterRequest" << DTO >> {
-        + FullName : string «Required, MaxLen(100)»
-        + Email : string «Required, EmailAddress»
-        + Password : string «Required, MinLen(6)»
-    }
-
-    class "LoginRequest" << DTO >> {
-        + Email : string «Required, EmailAddress»
-        + Password : string «Required»
-    }
-
-    class "AuthResponse" << DTO >> {
-        + Id : string
-        + FullName : string
-        + Email : string
-        + Roles : List<string>
-        + Token : string
-        + RefreshToken : string
-        + RefreshTokenExpiration : DateTime
-    }
-
-    class "AssignRoleRequest" << DTO >> {
-        + Role : string «Required»
+        + TotalPages : int <<computed>>
+        + HasNext : bool <<computed>>
+        + HasPrevious : bool <<computed>>
     }
 }
 
@@ -176,52 +170,44 @@ package "ClinicManagementAPI.Core.DTOs.Auth" #161B22 {
 ' (1) Patient implements ISoftDeletable
 Patient .up.|> ISoftDeletable : " (1) Implements "
 
-' (2) Patient uses Gender enum
-Patient -[#58A6FF]right-> Gender : " (2) Uses "
+' (2) Doctor implements ISoftDeletable
+Doctor .up.|> ISoftDeletable : " (2) Implements "
 
-' (3) Patient has optional FK to ApplicationUser
-Patient "0..*" --o "0..1" ApplicationUser : " (3) Optional FK (UserId) "
+' (3) PatientService implements IPatientService
+"ClinicManagementAPI.Core.Services.PatientService" .up.|> IPatientService : " (3) Realizes "
 
-' (4) PatientService implements IPatientService
-"ClinicManagementAPI.Core.Services.PatientService" .up.|> IPatientService : " (4) Realizes "
+' (4) DoctorService implements IDoctorService
+"ClinicManagementAPI.Core.Services.DoctorService" .up.|> IDoctorService : " (4) Realizes "
 
-' (5) IPatientService returns Result<T>
-IPatientService -[#3FB950]right-> "Result<T>" : " (5) Wraps "
+' (5) IDoctorService returns Result<T>
+IDoctorService -[#3FB950]right-> "Result<T>" : " (5) Wraps "
 
-' (6) Service consumes CreatePatientRequest
-CreatePatientRequest -[#58A6FF]right-> IPatientService : " (6) Input "
+' (6) Service consumes CreateDoctorRequest
+CreateDoctorRequest -[#58A6FF]right-> IDoctorService : " (6) Input "
 
-' (7) Service consumes UpdatePatientRequest
-UpdatePatientRequest -[#58A6FF]right-> IPatientService : " (7) Input "
+' (7) Service consumes UpdateDoctorRequest
+UpdateDoctorRequest -[#58A6FF]right-> IDoctorService : " (7) Input "
 
-' (8) Service Returns PatientResponse
-IPatientService -[#58A6FF]down-> PatientResponse : " (8) Output "
+' (8) Service returns DoctorResponse
+IDoctorService -[#58A6FF]down-> DoctorResponse : " (8) Output "
 
 ' (9) Service consumes PaginationRequest
-PaginationRequest -[#58A6FF]right-> IPatientService : " (9) Input "
+PaginationRequest -[#58A6FF]right-> IDoctorService : " (9) Input "
 
-' (10) Service Returns PagedResponse
-IPatientService -[#58A6FF]down-> "PagedResponse<T>" : " (10) Wraps Output "
-
-' (11) Service consumes RegisterRequest
-RegisterRequest -[#58A6FF]right-> IAuthService : " (11) Input "
-
-' (12) Service consumes LoginRequest
-LoginRequest -[#58A6FF]right-> IAuthService : " (12) Input "
-
-' (13) Service consumes AssignRoleRequest
-AssignRoleRequest -[#58A6FF]right-> IAuthService : " (13) Input "
-
-' (14) Service Returns AuthResponse
-IAuthService -[#58A6FF]down-> AuthResponse : " (14) Output "
+' (10) Service returns PagedResponse
+IDoctorService -[#58A6FF]down-> "PagedResponse<T>" : " (10) Wraps Output "
 
 ' === Notes ===
 
-note top of Patient
+note top of Doctor
     Email has **Filtered Unique Index**
     (IsDeleted = 0) at database level.
     Global Query Filter auto-excludes
-    deleted patients from queries.
+    deleted doctors from queries.
+    ----
+    **IsAvailable** controls whether
+    a doctor can accept appointments.
+    GetAvailableAsync filters on this.
 end note
 
 note bottom of ISoftDeletable
@@ -230,10 +216,11 @@ note bottom of ISoftDeletable
     Doctor (Sprint 4).
 end note
 
-note right of UpdatePatientRequest
+note right of UpdateDoctorRequest
     All fields optional for
     **partial update**. Service
     rejects if all fields are null.
+    Includes **IsAvailable** toggle.
 end note
 
 @enduml

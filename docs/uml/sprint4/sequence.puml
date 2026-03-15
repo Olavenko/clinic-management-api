@@ -1,0 +1,208 @@
+@startuml
+' -------------------------------------------------------
+' File: sequence.puml
+' -------------------------------------------------------
+' Purpose   : Sequence — Doctor CRUD Flow (Public GET + Admin Write + Soft Delete)
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-15
+' Sprint    : 4 — Doctors CRUD + Role-based Authorization
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Sequence — Doctor CRUD Flow (Sprint 4)
+
+' === Header/Footer ===
+header Clinic Management System - Doctor Module
+footer Doctor CRUD + Public GET + Soft Delete Sequence
+
+' === Global Settings ===
+autonumber "<b>[00]</b>"
+
+' === Participants by Layer ===
+
+box "Presentation / API Layer" #161B22
+    actor "<color:#E6EDF3><&person></color> Client" as CLIENT
+    participant "<color:#3FB950><&shield></color> DoctorEndpoints" as ENDP << (E,#58A6FF) Minimal API >>
+    participant "<color:#F85149><&cog></color> Authorization" as AUTH << (M,#F85149) Middleware >>
+end box
+
+box "Core / Application Layer" #0D1117
+    participant "<color:#3FB950><&cog></color> DoctorService" as SVC << (S,#3FB950) Service >>
+end box
+
+box "Infrastructure / Persistence" #161B22
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << (D,#D29922) Database >>
+end box
+
+== Get All Doctors (GET /api/doctors) — Public ==
+
+CLIENT -> ENDP : GET /api/doctors\n?page=1&pageSize=10&searchTerm=cardio
+activate ENDP
+
+note right ENDP: No JWT required\n(public endpoint)
+
+ENDP -> SVC : GetAllAsync(PaginationRequest)
+activate SVC
+
+note over SVC: Global Query Filter\nautomatically excludes\nIsDeleted = true
+
+alt SearchTerm provided
+    SVC -> DB : SELECT WHERE\n(FullName LIKE '%cardio%'\nOR Specialization LIKE '%cardio%')\nAND IsDeleted = false
+    activate DB
+    DB --> SVC : filtered doctors
+    deactivate DB
+else No SearchTerm
+    SVC -> DB : SELECT WHERE IsDeleted = false\nORDER BY FullName\nOFFSET/FETCH (pagination)
+    activate DB
+    DB --> SVC : paged doctors
+    deactivate DB
+end
+
+note over SVC: Map List<Doctor> -> List<DoctorResponse>\nBuild PagedResponse<DoctorResponse>
+
+SVC --> ENDP : Result.Success(PagedResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 200 OK\n(PagedResponse<DoctorResponse>)
+deactivate ENDP
+
+== Get Available Doctors (GET /api/doctors/available) — Public ==
+
+CLIENT -> ENDP : GET /api/doctors/available\n?page=1&pageSize=10
+activate ENDP
+
+note right ENDP: No JWT required\n(patients browse\navailable doctors)
+
+ENDP -> SVC : GetAvailableAsync(PaginationRequest)
+activate SVC
+
+SVC -> DB : SELECT WHERE\nIsAvailable = true\nAND IsDeleted = false\nORDER BY FullName
+activate DB
+DB --> SVC : available doctors
+deactivate DB
+
+SVC --> ENDP : Result.Success(PagedResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 200 OK\n(PagedResponse<DoctorResponse>)
+deactivate ENDP
+
+== Create Doctor (POST /api/doctors) — Admin Only ==
+
+CLIENT -> ENDP : POST /api/doctors\n(CreateDoctorRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin ONLY
+AUTH --> ENDP : Authorized (or 401/403)
+deactivate AUTH
+
+ENDP -> SVC : CreateAsync(request)
+activate SVC
+
+SVC -> DB : SELECT FROM Doctors\nIGNORE QUERY FILTERS\nWHERE Email = request.Email
+activate DB
+DB --> SVC : null (not found)
+deactivate DB
+
+note over SVC: Map CreateDoctorRequest -> Doctor\nSet CreatedAt = UtcNow\nSet IsAvailable = true
+
+SVC -> DB : INSERT INTO Doctors
+activate DB
+DB --> SVC : OK
+deactivate DB
+
+SVC --> ENDP : Result.Success(DoctorResponse)
+deactivate SVC
+
+ENDP --> CLIENT : 201 Created\n(DoctorResponse)
+deactivate ENDP
+
+== Update Doctor (PUT /api/doctors/{id}) — Admin Only ==
+
+CLIENT -> ENDP : PUT /api/doctors/{id}\n(UpdateDoctorRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+AUTH --> ENDP : Authorized (or 401/403)
+deactivate AUTH
+
+ENDP -> SVC : UpdateAsync(id, request)
+activate SVC
+
+alt All fields null
+    SVC --> ENDP : Result.Failure("At least one field\nmust be provided", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else At least one field provided
+    SVC -> DB : SELECT FROM Doctors\nWHERE Id = {id}\nAND IsDeleted = false
+    activate DB
+    DB --> SVC : doctor / null
+    deactivate DB
+
+    alt doctor found
+        alt Email is being changed
+            SVC -> DB : SELECT FROM Doctors\nIGNORE QUERY FILTERS\nWHERE Email = newEmail AND Id != {id}
+            activate DB
+            DB --> SVC : exists / null
+            deactivate DB
+        end
+
+        note over SVC: Update only provided fields\nSet UpdatedAt = UtcNow\n(includes IsAvailable toggle)
+
+        SVC -> DB : UPDATE Doctors SET ...
+        activate DB
+        DB --> SVC : OK
+        deactivate DB
+
+        SVC --> ENDP : Result.Success(DoctorResponse)
+        ENDP --> CLIENT : 200 OK\n(DoctorResponse)
+    else doctor not found
+        SVC --> ENDP : Result.Failure("Doctor not found", 404)
+        ENDP --> CLIENT : 404 Not Found
+    end
+end
+deactivate SVC
+deactivate ENDP
+
+== Soft Delete Doctor (DELETE /api/doctors/{id}) — Admin Only ==
+
+CLIENT -> ENDP : DELETE /api/doctors/{id}\n(JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin ONLY\n(Receptionist -> 403)
+AUTH --> ENDP : Authorized
+deactivate AUTH
+
+ENDP -> SVC : DeleteAsync(id)
+activate SVC
+
+SVC -> DB : SELECT FROM Doctors\nWHERE Id = {id}\nAND IsDeleted = false
+activate DB
+DB --> SVC : doctor / null
+deactivate DB
+
+alt doctor found
+    note over SVC #21262D: <color:#F85149>SOFT DELETE</color>\nDoes NOT remove from database\nSets IsDeleted = true\nSets DeletedAt = UtcNow
+
+    SVC -> DB : UPDATE Doctors SET\nIsDeleted = true,\nDeletedAt = UtcNow
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+
+    SVC --> ENDP : Result.Success(true)
+    ENDP --> CLIENT : 204 No Content
+else doctor not found
+    SVC --> ENDP : Result.Failure("Doctor not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+end
+deactivate SVC
+deactivate ENDP
+
+@enduml
