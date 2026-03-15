@@ -388,6 +388,19 @@ Admin manages doctors → Login required ✅
 
 ---
 
+## Section 8 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 4 features (Doctors CRUD)
+
+```markdown
+[ ] Review docs/ to determine required diagrams for Sprint 4
+[ ] Update/Create Component/Sequence Diagrams for doctor services
+[ ] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
 ## Sprint 4 — Done Definition
 
 ```markdown

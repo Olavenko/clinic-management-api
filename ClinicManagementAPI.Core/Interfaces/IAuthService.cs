@@ -1,4 +1,4 @@
-using ClinicManagementAPI.Core.DTOs.Auth;
+﻿using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Core.Interfaces;
