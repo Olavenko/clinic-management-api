@@ -1,4 +1,4 @@
-# Sprint 4 — Doctors CRUD
+﻿# Sprint 4 — Doctors CRUD
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -14,7 +14,8 @@
 **Goal:** Define the Doctor entity with Soft Delete support (reusing ISoftDeletable from Sprint 3)
 
 ```markdown
-[ ] Create Doctor model in Core/Models/
+[x] Create Doctor model in Core/Models/
+    Command: New-Item -Path "Core/Models/Doctor.cs" -ItemType File -Force
     Implements: ISoftDeletable
     Properties:
     - Id (int)
@@ -30,20 +31,20 @@
     - IsDeleted (bool, default = false) ← from ISoftDeletable
     - DeletedAt (DateTime, nullable)    ← from ISoftDeletable
 
-[ ] Configure Doctor entity in AppDbContext OnModelCreating
+[x] Configure Doctor entity in AppDbContext OnModelCreating
     - Filtered Unique Index on Email: .HasIndex(d => d.Email).IsUnique().HasFilter("IsDeleted = 0")
     - Global Query Filter: .HasQueryFilter(d => !d.IsDeleted)
 
     ⚠️ Same pattern as Patient — only active emails must be unique
 
-[ ] Add Doctors DbSet to AppDbContext
+[x] Add Doctors DbSet to AppDbContext
     public DbSet<Doctor> Doctors => Set<Doctor>();
 
-[ ] Add Doctor Migration
+[x] Add Doctor Migration
     Command: dotnet ef migrations add AddDoctors --project ClinicManagementAPI.Core
                                                  --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[x] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
 ```
@@ -56,7 +57,8 @@
 **Goal:** Define request and response shapes — never expose the raw model to the API consumer
 
 ```markdown
-[ ] Create CreateDoctorRequest DTO in Api/DTOs/Doctors/
+[x] Create CreateDoctorRequest DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/CreateDoctorRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, [Required], [MinLength(2)], [MaxLength(100)])
     - Email (string, [Required], [EmailAddress])
@@ -65,7 +67,8 @@
     - YearsOfExperience (int, [Required], [Range(0, 60)])
     - Bio (string, optional, [MaxLength(500)])
 
-[ ] Create UpdateDoctorRequest DTO in Api/DTOs/Doctors/
+[x] Create UpdateDoctorRequest DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/UpdateDoctorRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, optional, [MinLength(2)], [MaxLength(100)])
     - Email (string, optional, [EmailAddress])
@@ -79,7 +82,8 @@
     BUT at least one field must be provided
     → Validate in DoctorService: if all fields are null → Result.Failure("At least one field must be provided", 400)
 
-[ ] Create DoctorResponse DTO in Api/DTOs/Doctors/
+[x] Create DoctorResponse DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/DoctorResponse.cs" -ItemType File -Force
     Properties:
     - Id (int)
     - FullName (string)
@@ -103,7 +107,8 @@
 **Goal:** Define the contract before implementation — consistent with Result Pattern from Sprint 2
 
 ```markdown
-[ ] Create IDoctorService interface in Core/Interfaces/
+[x] Create IDoctorService interface in ClinicManagementAPI.Core/Interfaces/
+    Command: New-Item -Path "ClinicManagementAPI.Core/Interfaces/IDoctorService.cs" -ItemType File -Force
     Methods (all return Result<T>):
     - Task<Result<PagedResponse<DoctorResponse>>> GetAllAsync(PaginationRequest pagination)
     - Task<Result<PagedResponse<DoctorResponse>>> GetAvailableAsync(PaginationRequest pagination)
@@ -128,7 +133,8 @@ Better to add it now than revisit DoctorService later ✅
 **Goal:** Implement business logic using Result Pattern — Soft Delete instead of Hard Delete
 
 ```markdown
-[ ] Create DoctorService in Core/Services/
+[x] Create DoctorService in ClinicManagementAPI.Core/Services/
+    Command: New-Item -Path "ClinicManagementAPI.Core/Services/DoctorService.cs" -ItemType File -Force
     Implements IDoctorService
 
     GetAllAsync:
@@ -189,7 +195,7 @@ Better to add it now than revisit DoctorService later ✅
     - Save to Database
     - Return Result.Success(true)
 
-[ ] Register IDoctorService in Program.cs
+[x] Register IDoctorService in Program.cs
     builder.Services.AddScoped<IDoctorService, DoctorService>()
 ```
 
@@ -201,7 +207,8 @@ Better to add it now than revisit DoctorService later ✅
 **Goal:** Expose CRUD endpoints with Role-based protection — same pattern as Patients
 
 ```markdown
-[ ] Create DoctorEndpoints.cs in Api/Endpoints/
+[x] Create DoctorEndpoints.cs in ClinicManagementAPI.Api/Endpoints/
+    Command: New-Item -Path "ClinicManagementAPI.Api/Endpoints/DoctorEndpoints.cs" -ItemType File -Force
 
     GET /api/doctors
     - No JWT required (public endpoint — anyone can see doctors list)
@@ -245,7 +252,7 @@ Better to add it now than revisit DoctorService later ✅
     - Returns 401 if no token
     - Returns 403 if not Admin
 
-[ ] Map Doctor endpoints in Program.cs
+[x] Map Doctor endpoints in Program.cs
     app.MapDoctorEndpoints()
 ```
 
@@ -264,7 +271,7 @@ Admin manages doctors → Login required ✅
 **Goal:** 70%+ coverage — verify CRUD logic, Soft Delete, search, and Authorization rules
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/DoctorServiceTests.cs
+[x] Create Unit Tests in Tests/Unit/DoctorServiceTests.cs
     Test cases:
     — GetAll + Search:
     - GetAllAsync_ReturnsPagedDoctors
@@ -301,7 +308,7 @@ Admin manages doctors → Login required ✅
     - DeleteAsync_DoctorDisappearsFromGetAll
     - DeleteAsync_DoctorDisappearsFromGetAvailable
 
-[ ] Create Integration Tests in Tests/Integration/DoctorEndpointsTests.cs
+[x] Create Integration Tests in Tests/Integration/DoctorEndpointsTests.cs
     Test cases:
     — Public endpoints (no token):
     - GET    /api/doctors            → 200 without token (public)
@@ -333,22 +340,45 @@ Admin manages doctors → Login required ✅
     - GET    /api/doctors/available  → soft-deleted doctor not in available list
     - POST   /api/doctors            → 400 creating doctor with deleted doctor's email
 
-[ ] Run all tests and verify they pass
+[x] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[x] Check coverage
+    Step 1 — Collect coverage data (generates XML):
     Command: dotnet test --collect:"XPlat Code Coverage"
+
+    Step 2 — Install ReportGenerator (one-time):
+    Command: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    Step 3 — Generate HTML report from the XML:
+    Command: reportgenerator -reports:"ClinicManagementAPI.Tests\TestResults\**\coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;TextSummary"
+
+    Step 4 — Open the report in browser:
+    Command: Start-Process "coveragereport\index.html"   
 ```
 
 ---
 
-## Section 7 — CI Update
+## Section 7 — Diagrams
+
+**Expected Time: 30 minutes**  
+**Goal:** Create and update necessary system diagrams for Sprint 4 features (Doctors CRUD)
+
+```markdown
+[x] Review docs/ to determine required diagrams for Sprint 4
+[x] Update/Create Component/Sequence Diagrams for doctor services
+[x] Verify PlantUML/Markdown diagrams render correctly
+```
+
+---
+
+## Section 8 — CI Update
 
 **Expected Time: 10 minutes**  
 **Goal:** CI pipeline runs all tests including new Doctor and Soft Delete tests
 
 ```markdown
-[ ] Push to GitHub and verify:
+[x] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests still pass
     ✅ All Patient tests still pass (including Soft Delete)

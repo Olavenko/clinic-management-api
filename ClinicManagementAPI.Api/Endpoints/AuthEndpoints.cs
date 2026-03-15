@@ -6,16 +6,17 @@ namespace ClinicManagementAPI.Api.Endpoints;
 
 public static class AuthEndpoints
 {
-    // Extension method on WebApplication — keeps Program.cs clean
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        // Group all auth endpoints under /api/auth
-        var group = app.MapGroup("/api/auth").WithTags("Auth");
+        var group = app.MapGroup("/api/auth")
+            .WithTags("Auth")
+            .RequireRateLimiting("auth");
 
         // POST /api/auth/register
-        group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>
+        group.MapPost("/register", async (
+            RegisterRequest request, IAuthService authService, CancellationToken cancellationToken) =>
         {
-            var result = await authService.RegisterAsync(request);
+            var result = await authService.RegisterAsync(request, cancellationToken);
 
             return result.IsSuccess
                 ? Results.Created("", result.Value)
@@ -27,9 +28,10 @@ public static class AuthEndpoints
         .AddEndpointFilter<ValidationFilter<RegisterRequest>>();
 
         // POST /api/auth/login
-        group.MapPost("/login", async (LoginRequest request, IAuthService authService) =>
+        group.MapPost("/login", async (
+            LoginRequest request, IAuthService authService, CancellationToken cancellationToken) =>
         {
-            var result = await authService.LoginAsync(request);
+            var result = await authService.LoginAsync(request, cancellationToken);
 
             return result.IsSuccess
                 ? Results.Ok(result.Value)
@@ -41,9 +43,10 @@ public static class AuthEndpoints
         .AddEndpointFilter<ValidationFilter<LoginRequest>>();
 
         // POST /api/auth/refresh
-        group.MapPost("/refresh", async (RefreshTokenRequest request, IAuthService authService) =>
+        group.MapPost("/refresh", async (
+            RefreshTokenRequest request, IAuthService authService, CancellationToken cancellationToken) =>
         {
-            var result = await authService.RefreshTokenAsync(request.RefreshToken);
+            var result = await authService.RefreshTokenAsync(request.RefreshToken, cancellationToken);
 
             return result.IsSuccess
                 ? Results.Ok(result.Value)
@@ -55,9 +58,10 @@ public static class AuthEndpoints
         .AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>();
 
         // POST /api/auth/logout
-        group.MapPost("/logout", async (RefreshTokenRequest request, IAuthService authService) =>
+        group.MapPost("/logout", async (
+            RefreshTokenRequest request, IAuthService authService, CancellationToken cancellationToken) =>
         {
-            var result = await authService.RevokeTokenAsync(request.RefreshToken);
+            var result = await authService.RevokeTokenAsync(request.RefreshToken, cancellationToken);
 
             return result.IsSuccess
                 ? Results.NoContent()

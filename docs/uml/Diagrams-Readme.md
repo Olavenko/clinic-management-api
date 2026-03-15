@@ -75,7 +75,12 @@ docs/uml/
 |   +-- sequence.puml       <-- Patient CRUD + Assign Role flow
 |   +-- class.puml          <-- Patient domain & service architecture
 |   +-- erd.puml            <-- Database schema (Patients + Identity tables)
-+-- sprint4/                <-- Doctors CRUD
++-- sprint4/
+|   +-- exports/            <-- Generated SVG outputs (.svg)
+|   +-- component.puml      <-- Updated architecture (+ Doctor endpoints & service)
+|   +-- sequence.puml       <-- Doctor CRUD flow (Public GET + Admin Write + Soft Delete)
+|   +-- class.puml          <-- Doctor domain & service architecture
+|   +-- erd.puml            <-- Database schema (+ Doctors table)
 +-- sprint5/                <-- Business rules
 +-- sprint6/                <-- Polish & deployment
 ```

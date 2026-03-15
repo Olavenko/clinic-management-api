@@ -1,6 +1,5 @@
 namespace ClinicManagementAPI.Core.DTOs;
 
-// Generic paged response — wraps any list with pagination metadata
 public class PagedResponse<T>
 {
     public IEnumerable<T> Items { get; set; } = [];

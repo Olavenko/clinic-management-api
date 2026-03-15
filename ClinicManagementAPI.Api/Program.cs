@@ -1,43 +1,43 @@
-using ClinicManagementAPI.Api.Middleware;
-using ClinicManagementAPI.Core.Data;
-using ClinicManagementAPI.Core.Models;
-using ClinicManagementAPI.Core.Services;
-using ClinicManagementAPI.Core.Interfaces;
-using ClinicManagementAPI.Api.Endpoints;
+using System.Text;
+using System.Threading.RateLimiting;
 
+using Microsoft.AspNetCore.RateLimiting;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+
+using ClinicManagementAPI.Api.Endpoints;
+using ClinicManagementAPI.Api.Middleware;
+using ClinicManagementAPI.Core.Data;
+using ClinicManagementAPI.Core.Interfaces;
+using ClinicManagementAPI.Core.Models;
+using ClinicManagementAPI.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- 1. Infrastructure & Core Services ---
 builder.Services.AddOpenApi();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("ClinicDb");
 
+// --- 2. Database & Identity ---
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ClinicDb"))
 );
-
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
-
-// Register AuthService for DI — any class that needs IAuthService gets AuthService
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>("ClinicDb");
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
+// --- 3. Authentication & Authorization ---
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
     ?? throw new InvalidOperationException("JWT settings not configured");
 
-// Register JWT settings as Singleton for DI
 builder.Services.AddSingleton(jwtSettings);
 
-// Register Authentication service — required for app.UseAuthentication()
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -54,26 +54,37 @@ builder.Services.AddAuthentication(options =>
     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
 });
 
-// Register Authorization service — required for app.UseAuthorization()
 builder.Services.AddAuthorization();
 
-// Register PatientService for DI — any class that needs IPatientService gets PatientService
+// --- Rate Limiting (auth endpoints) ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+});
+
+// --- 4. Application Services ---
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IDoctorService, DoctorService>();
 
 var app = builder.Build();
 
-// Seed roles on startup
+// --- 5. Initialization / Seeding ---
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await DatabaseSeeder.SeedRolesAsync(roleManager);
 }
 
+// --- 6. Middleware Pipeline ---
 app.UseExceptionHandler();
 
-app.MapHealthChecks("/health");
-
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -81,17 +92,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Authentication and Authorization middleware must be added before endpoint routing
+// Must be before endpoint routing — order matters for auth pipeline
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
-// Map auth endpoints (register, login, refresh, logout)
-app.MapAuthEndpoints();
-
-// Map patient endpoints
-app.MapPatientEndpoints();
-
-// Map user endpoints (role management)
+// --- 7. Endpoints Mapping ---
+app.MapHealthChecks("/health");
 app.MapUserEndpoints();
+app.MapAuthEndpoints();
+app.MapPatientEndpoints();
+app.MapDoctorEndpoints();
 
+// --- 8. Run ---
 app.Run();

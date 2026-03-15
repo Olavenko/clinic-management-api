@@ -1,4 +1,4 @@
-﻿using ClinicManagementAPI.Core.DTOs.Auth;
+using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 
 namespace ClinicManagementAPI.Api.Endpoints;
@@ -15,9 +15,10 @@ public static class UserEndpoints
         group.MapPut("/{id}/role", async (
             string id,
             AssignRoleRequest request,
-            IAuthService authService) =>
+            IAuthService authService,
+            CancellationToken cancellationToken) =>
         {
-            var result = await authService.AssignRoleAsync(id, request);
+            var result = await authService.AssignRoleAsync(id, request, cancellationToken);
 
             return result.IsSuccess
                 ? Results.Ok(new { message = "Role assigned successfully" })

@@ -1,7 +1,9 @@
-using ClinicManagementAPI.Core.Data;
-using ClinicManagementAPI.Core.Models;
+using System.Text;
+using System.Threading.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -9,9 +11,11 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-using System.Text;
+using ClinicManagementAPI.Core.Data;
+using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Tests.Integration;
 
@@ -51,11 +55,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 RefreshTokenExpiryDays = 7
             };
 
-            // Replace the JwtSettings singleton
             services.RemoveAll(typeof(JwtSettings));
             services.AddSingleton(testJwtSettings);
 
-            // Override JWT Bearer options with test key
             services.Configure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme,
                 options =>
@@ -72,6 +74,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                             Encoding.UTF8.GetBytes(testJwtSettings.Key))
                     };
                 });
+
+            // === Disable Rate Limiting for Tests ===
+            services.RemoveAll(typeof(IConfigureOptions<RateLimiterOptions>));
+            services.AddRateLimiter(options =>
+            {
+                options.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter("test"));
+            });
 
             // === Seed Roles ===
             var sp = services.BuildServiceProvider();

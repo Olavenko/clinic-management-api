@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
 using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Core.Data;
@@ -8,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<Doctor> Doctors => Set<Doctor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -16,33 +18,39 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 
         modelBuilder.Entity<RefreshToken>(entity =>
         {
-            // Each RefreshToken belongs to one User
+            // Restrict delete: deleting a user must not cascade-delete token history
             entity.HasOne(rt => rt.User)
                   .WithMany()
                   .HasForeignKey(rt => rt.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Unique index on Token for fast lookups
             entity.HasIndex(rt => rt.Token)
                   .IsUnique();
         });
 
-        // Patient configuration
         modelBuilder.Entity<Patient>(entity =>
         {
-            // Filtered unique index: only active (non-deleted) emails must be unique
+            // HasFilter: allow email reuse after soft delete (IsDeleted = 1 emails are excluded)
             entity.HasIndex(p => p.Email)
                   .IsUnique()
                   .HasFilter("IsDeleted = 0");
 
-            // Optional relationship to ApplicationUser
             entity.HasOne(p => p.User)
                   .WithMany()
                   .HasForeignKey(p => p.UserId)
                   .IsRequired(false);
 
-            // Global query filter: automatically exclude soft-deleted patients
             entity.HasQueryFilter(p => !p.IsDeleted);
+        });
+
+        modelBuilder.Entity<Doctor>(entity =>
+        {
+            // HasFilter: allow email reuse after soft delete
+            entity.HasIndex(d => d.Email)
+                  .IsUnique()
+                  .HasFilter("IsDeleted = 0");
+
+            entity.HasQueryFilter(d => !d.IsDeleted);
         });
     }
 }
