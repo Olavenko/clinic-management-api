@@ -25,8 +25,8 @@ autonumber "<b>[00]</b>"
 
 box "Presentation / API Layer" #161B22
     actor "<color:#E6EDF3><&person></color> Client" as CLIENT
-    participant "<color:#58A6FF><&shield></color> AuthEndpoints" as ENDP << (C,#58A6FF) Controller >>
-    participant "<color:#F85149><&cog></color> ValidationFilter" as FILT << (F,#F85149) Filter >>
+    participant "<color:#58A6FF><&shield></color> AuthEndpoints" as ENDP << (E,#58A6FF) Minimal API >>
+    participant "<color:#F85149><&cog></color> ValidationFilter" as FILT << (F,#F85149) EndpointFilter >>
 end box
 
 box "Core / Application Layer" #0D1117

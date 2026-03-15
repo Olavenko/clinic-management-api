@@ -24,9 +24,10 @@ public class ValidationFilter<T> : IEndpointFilter where T : class
         if (!isValid)
         {
             var errors = validationResults
+                .GroupBy(v => v.MemberNames.FirstOrDefault() ?? "Unknown")
                 .ToDictionary(
-                    v => v.MemberNames.FirstOrDefault() ?? "Unknown",
-                    v => new[] { v.ErrorMessage ?? "Invalid value" });
+                    g => g.Key,
+                    g => g.Select(v => v.ErrorMessage ?? "Invalid value").ToArray());
 
             return Results.ValidationProblem(errors);
         }

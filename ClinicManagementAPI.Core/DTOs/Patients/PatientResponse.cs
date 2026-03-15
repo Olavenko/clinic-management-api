@@ -1,7 +1,6 @@
 namespace ClinicManagementAPI.Core.DTOs.Patients;
 
-// DTO for returning patient data to the API consumer
-// No IsDeleted or DeletedAt — these are internal fields
+// No IsDeleted or DeletedAt — these are internal fields not exposed to clients
 public class PatientResponse
 {
     public int Id { get; set; }

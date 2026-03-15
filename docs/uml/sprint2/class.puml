@@ -23,7 +23,7 @@ skinparam groupInheritance 2
 skinparam nodesep 60
 skinparam ranksep 60
 
-' === Namespaces / Packages ===
+' === Packages ===
 
 package "ClinicManagementAPI.Core.Models" #0D1117 {
     
@@ -76,7 +76,7 @@ package "ClinicManagementAPI.Core.DTOs" #161B22 {
     }
 }
 
-' === Relationships (Process Flow 1 -> 4) ===
+' === Relationships ===
 
 ' (1) Data Structure: User owns multiple tokens
 ApplicationUser "1" *-- "0..*" RefreshToken : " (1) Owns "
@@ -89,7 +89,9 @@ IAuthService -[#3FB950]right-> "Result<T>" : " (3) Wraps "
 
 ' (4) Data Transfer: Service maps to DTOs
 IAuthService -[#58A6FF]down-> "AuthResponse" : " (4) Returns "
-"LoginRequest" -[#58A6FF]right-> IAuthService : " (4) Input "
+
+' (5) Data Transfer: DTO maps to Service
+"LoginRequest" -[#58A6FF]right-> IAuthService : " (5) Input "
 
 note top of "Result<T>"
     Generic wrapper for all Service 

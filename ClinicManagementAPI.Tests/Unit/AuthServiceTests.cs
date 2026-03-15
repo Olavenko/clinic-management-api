@@ -1,11 +1,11 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Models;
 using ClinicManagementAPI.Core.Services;
-
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ClinicManagementAPI.Tests.Unit;
 
@@ -53,7 +53,6 @@ public class AuthServiceTests : IDisposable
         _authService = new AuthService(_userManager, jwtSettings, _dbContext);
     }
 
-    // Step 4: Cleanup after each test
     public void Dispose()
     {
         _dbContext.Database.EnsureDeleted();
@@ -61,7 +60,8 @@ public class AuthServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // Test 1 — Register valid data
+    // ── Register ──────────────────────────────────────────────────────────
+
     [Fact]
     public async Task RegisterAsync_WithValidData_ReturnsSuccessResult()
     {
@@ -83,7 +83,6 @@ public class AuthServiceTests : IDisposable
         Assert.False(string.IsNullOrEmpty(result.Value.RefreshToken));
     }
 
-    // Test 2 — Register duplicate email
     [Fact]
     public async Task RegisterAsync_WithExistingEmail_ReturnsFailureResult()
     {
@@ -112,7 +111,8 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(400, result.StatusCode);
     }
 
-    // Test 3 — Login valid credentials
+    // ── Login ───────────────────────────────────────────────────────────
+
     [Fact]
     public async Task LoginAsync_WithValidCredentials_ReturnsSuccessResult()
     {
@@ -140,7 +140,6 @@ public class AuthServiceTests : IDisposable
         Assert.False(string.IsNullOrEmpty(result.Value.AccessToken));
     }
 
-    // Test 4 — Login wrong password
     [Fact]
     public async Task LoginAsync_WithWrongPassword_ReturnsFailureResult()
     {
@@ -167,7 +166,6 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(401, result.StatusCode);
     }
 
-    // Test 5 — Login with non-existent email
     [Fact]
     public async Task LoginAsync_WithNonExistentEmail_ReturnsFailureResult()
     {
@@ -187,7 +185,8 @@ public class AuthServiceTests : IDisposable
         Assert.Equal("Invalid credentials", result.Error);
     }
 
-    // Test 6 — Refresh token with valid token
+    // ── RefreshToken ───────────────────────────────────────────────────────
+
     [Fact]
     public async Task RefreshTokenAsync_WithValidToken_ReturnsSuccessResult()
     {
@@ -210,7 +209,6 @@ public class AuthServiceTests : IDisposable
         Assert.NotEqual(refreshToken, result.Value.RefreshToken);
     }
 
-    // Test 7 — Refresh token with expired token
     [Fact]
     public async Task RefreshTokenAsync_WithExpiredToken_ReturnsFailureResult()
     {
@@ -241,7 +239,8 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(401, result.StatusCode);
     }
 
-    // Test 8 — Revoke token with valid token
+    // ── RevokeToken ────────────────────────────────────────────────────────
+
     [Fact]
     public async Task RevokeTokenAsync_WithValidToken_ReturnsSuccessResult()
     {
@@ -267,7 +266,6 @@ public class AuthServiceTests : IDisposable
         Assert.True(storedToken!.IsRevoked);
     }
 
-    // Test 9 — Register with weak password
     [Fact]
     public async Task RegisterAsync_WithWeakPassword_ReturnsFailureResult()
     {
@@ -287,7 +285,6 @@ public class AuthServiceTests : IDisposable
         Assert.Equal(400, result.StatusCode);
     }
 
-    // Test 10 — Refresh token with non-existent token
     [Fact]
     public async Task RefreshTokenAsync_WithNonExistentToken_ReturnsFailureResult()
     {
@@ -300,7 +297,6 @@ public class AuthServiceTests : IDisposable
         Assert.Equal("Invalid token", result.Error);
     }
 
-    // Test 11 — Refresh token with revoked token
     [Fact]
     public async Task RefreshTokenAsync_WithRevokedToken_ReturnsFailureResult()
     {
@@ -323,10 +319,9 @@ public class AuthServiceTests : IDisposable
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal(401, result.StatusCode);
-        Assert.Equal("Token expired or revoked", result.Error);
+        Assert.Equal("Token reuse detected — all sessions revoked", result.Error);
     }
 
-    // Test 12 — Revoke token with non-existent token
     [Fact]
     public async Task RevokeTokenAsync_WithNonExistentToken_ReturnsFailureResult()
     {
@@ -339,7 +334,8 @@ public class AuthServiceTests : IDisposable
         Assert.Equal("Invalid token", result.Error);
     }
 
-    // Test 13 — Assign role with valid user
+    // ── AssignRole ─────────────────────────────────────────────────────────
+
     [Fact]
     public async Task AssignRoleAsync_WithValidUserId_ReturnsSuccessResult()
     {
@@ -367,7 +363,6 @@ public class AuthServiceTests : IDisposable
         Assert.Contains(AppRoles.Receptionist, roles);
     }
 
-    // Test 14 — Assign role with invalid user ID
     [Fact]
     public async Task AssignRoleAsync_WithInvalidUserId_ReturnsFailureResult()
     {
@@ -383,7 +378,6 @@ public class AuthServiceTests : IDisposable
         Assert.Equal("User not found", result.Error);
     }
 
-    // Test 15 — Assign role with invalid role name
     [Fact]
     public async Task AssignRoleAsync_WithInvalidRole_ReturnsFailureResult()
     {

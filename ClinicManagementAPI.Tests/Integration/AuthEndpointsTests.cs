@@ -2,10 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
-using ClinicManagementAPI.Core.DTOs.Auth;
-using ClinicManagementAPI.Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+
+using ClinicManagementAPI.Core.DTOs.Auth;
+using ClinicManagementAPI.Core.Models;
 
 namespace ClinicManagementAPI.Tests.Integration;
 
@@ -61,9 +62,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         return token.Claims.First(c => c.Type == "sub").Value;
     }
 
-    // ── Auth Endpoint Tests (existing) ──────────────────────────────
+    // ── Register ──────────────────────────────────────────────────────────
 
-    // Test 1: Register with valid data
     [Fact]
     public async Task Register_WithValidData_Returns201Created()
     {
@@ -87,7 +87,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotEmpty(authResponse.RefreshToken);
     }
 
-    // Test 2: Register with missing fields
     [Fact]
     public async Task Register_WithMissingFields_Returns400BadRequest()
     {
@@ -104,7 +103,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // Test 3: Register with invalid email format
     [Fact]
     public async Task Register_WithInvalidEmailFormat_Returns400BadRequest()
     {
@@ -123,7 +121,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // Test 4: Register with short password
     [Fact]
     public async Task Register_WithShortPassword_Returns400BadRequest()
     {
@@ -142,7 +139,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // Test 5: Register with duplicate email
     [Fact]
     public async Task Register_WithDuplicateEmail_Returns400BadRequest()
     {
@@ -165,7 +161,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // Test 6: Login with valid credentials
+    // ── Login ───────────────────────────────────────────────────────────
+
     [Fact]
     public async Task Login_WithValidCredentials_Returns200Ok()
     {
@@ -196,7 +193,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotEmpty(authResponse.AccessToken);
     }
 
-    // Test 7: Login with wrong password
     [Fact]
     public async Task Login_WithWrongPassword_Returns401Unauthorized()
     {
@@ -223,7 +219,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // Test 8: Login with non-existent email
     [Fact]
     public async Task Login_WithNonExistentEmail_Returns401Unauthorized()
     {
@@ -241,7 +236,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // Test 9: Refresh with valid token
+    // ── Refresh ──────────────────────────────────────────────────────────
+
     [Fact]
     public async Task Refresh_WithValidToken_Returns200Ok()
     {
@@ -273,7 +269,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotEqual(authData.RefreshToken, refreshData.RefreshToken);
     }
 
-    // Test 10: Refresh with expired or invalid token
     [Fact]
     public async Task Refresh_WithExpiredOrInvalidToken_Returns401Unauthorized()
     {
@@ -290,7 +285,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // Test 11: Logout on success
+    // ── Logout ───────────────────────────────────────────────────────────
+
     [Fact]
     public async Task Logout_OnSuccess_Returns204NoContent()
     {
@@ -323,7 +319,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
-    // Test 12: Logout without JWT
     [Fact]
     public async Task Logout_WithoutJwt_Returns401Unauthorized()
     {
@@ -340,9 +335,8 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // ── Role Assignment Tests ───────────────────────────────────────
+    // ── AssignRole ─────────────────────────────────────────────────────────
 
-    // Test 13: Assign role with Admin token + valid role
     [Fact]
     public async Task AssignRole_WithAdminTokenAndValidRole_Returns200()
     {
@@ -374,7 +368,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    // Test 14: Assign role with invalid role name
     [Fact]
     public async Task AssignRole_WithInvalidRole_Returns400()
     {
@@ -411,7 +404,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // Test 15: Assign role with Receptionist token → 403
     [Fact]
     public async Task AssignRole_WithReceptionistToken_Returns403()
     {
@@ -431,7 +423,6 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    // Test 16: Assign role with invalid userId → 404
     [Fact]
     public async Task AssignRole_WithInvalidUserId_Returns404()
     {

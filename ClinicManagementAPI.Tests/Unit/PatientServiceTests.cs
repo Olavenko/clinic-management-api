@@ -1,10 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Patients;
 using ClinicManagementAPI.Core.Models;
 using ClinicManagementAPI.Core.Services;
-
-using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagementAPI.Tests.Unit;
 

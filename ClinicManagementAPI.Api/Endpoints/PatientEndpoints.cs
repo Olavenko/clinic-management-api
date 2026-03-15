@@ -1,4 +1,4 @@
-﻿using ClinicManagementAPI.Core.DTOs;
+using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Patients;
 using ClinicManagementAPI.Core.Interfaces;
 
@@ -35,18 +35,20 @@ public static class PatientEndpoints
 
     private static async Task<IResult> GetAll(
         [AsParameters] PaginationRequest pagination,
-        IPatientService patientService)
+        IPatientService patientService,
+        CancellationToken cancellationToken)
     {
-        var result = await patientService.GetAllAsync(pagination);
+        var result = await patientService.GetAllAsync(pagination, cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
             : Results.Problem(result.Error!, statusCode: result.StatusCode);
     }
 
-    private static async Task<IResult> GetById(int id, IPatientService patientService)
+    private static async Task<IResult> GetById(
+        int id, IPatientService patientService, CancellationToken cancellationToken)
     {
-        var result = await patientService.GetByIdAsync(id);
+        var result = await patientService.GetByIdAsync(id, cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
@@ -55,9 +57,10 @@ public static class PatientEndpoints
 
     private static async Task<IResult> Create(
         CreatePatientRequest request,
-        IPatientService patientService)
+        IPatientService patientService,
+        CancellationToken cancellationToken)
     {
-        var result = await patientService.CreateAsync(request);
+        var result = await patientService.CreateAsync(request, cancellationToken);
 
         return result.IsSuccess
             ? Results.Created($"/api/patients/{result.Value!.Id}", result.Value)
@@ -67,18 +70,20 @@ public static class PatientEndpoints
     private static async Task<IResult> Update(
         int id,
         UpdatePatientRequest request,
-        IPatientService patientService)
+        IPatientService patientService,
+        CancellationToken cancellationToken)
     {
-        var result = await patientService.UpdateAsync(id, request);
+        var result = await patientService.UpdateAsync(id, request, cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
             : Results.Problem(result.Error!, statusCode: result.StatusCode);
     }
 
-    private static async Task<IResult> Delete(int id, IPatientService patientService)
+    private static async Task<IResult> Delete(
+        int id, IPatientService patientService, CancellationToken cancellationToken)
     {
-        var result = await patientService.DeleteAsync(id);
+        var result = await patientService.DeleteAsync(id, cancellationToken);
 
         return result.IsSuccess
             ? Results.NoContent()

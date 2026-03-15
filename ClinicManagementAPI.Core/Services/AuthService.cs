@@ -3,21 +3,22 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+
+using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 using ClinicManagementAPI.Core.Models;
-using ClinicManagementAPI.Core.Data;
-
-using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.EntityFrameworkCore;
 
 namespace ClinicManagementAPI.Core.Services;
 
 public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings jwtSettings, AppDbContext dbContext) : IAuthService
 {
-    // Register a new user — always assigned Patient role by default
-    public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
+    // All new registrations default to Patient role — Admin promotes via AssignRoleAsync
+    public async Task<Result<AuthResponse>> RegisterAsync(
+        RegisterRequest request, CancellationToken cancellationToken = default)
     {
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
@@ -52,7 +53,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             CreatedAt = DateTime.UtcNow
         });
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result<AuthResponse>.Success(new AuthResponse
         {
@@ -62,8 +63,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         });
     }
 
-    // Login an existing user
-    public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
+    public async Task<Result<AuthResponse>> LoginAsync(
+        LoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
@@ -88,7 +89,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             CreatedAt = DateTime.UtcNow
         });
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result<AuthResponse>.Success(new AuthResponse
         {
@@ -98,23 +99,36 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         });
     }
 
-    // Refresh an expired JWT using a valid refresh token
-    public async Task<Result<AuthResponse>> RefreshTokenAsync(string refreshToken)
+    // Token rotation: revoke the old token and issue a new pair
+    // Reuse detection: if a revoked token is presented, revoke ALL tokens for that user
+    public async Task<Result<AuthResponse>> RefreshTokenAsync(
+        string refreshToken, CancellationToken cancellationToken = default)
     {
         var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken, cancellationToken);
 
         if (storedToken is null)
         {
             return Result<AuthResponse>.Failure("Invalid token", 401);
         }
 
-        if (storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
+        // Reuse detection: a revoked token being reused indicates possible theft
+        // Revoke ALL tokens for this user as a safety measure
+        if (storedToken.IsRevoked)
         {
-            return Result<AuthResponse>.Failure("Token expired or revoked", 401);
+            await RevokeAllUserTokensAsync(storedToken.UserId, cancellationToken);
+            return Result<AuthResponse>.Failure("Token reuse detected — all sessions revoked", 401);
+        }
+
+        if (storedToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return Result<AuthResponse>.Failure("Token expired", 401);
         }
 
         storedToken.IsRevoked = true;
+
+        // Clean up expired tokens for this user to prevent table bloat
+        await CleanupExpiredTokensAsync(storedToken.UserId, cancellationToken);
 
         var user = await userManager.FindByIdAsync(storedToken.UserId);
 
@@ -129,7 +143,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             CreatedAt = DateTime.UtcNow
         });
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result<AuthResponse>.Success(new AuthResponse
         {
@@ -139,24 +153,76 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         });
     }
 
-    // Revoke a refresh token (logout)
-    public async Task<Result<bool>> RevokeTokenAsync(string refreshToken)
+    // Revoke all active refresh tokens for the user (logout everywhere)
+    public async Task<Result<bool>> RevokeTokenAsync(
+        string refreshToken, CancellationToken cancellationToken = default)
     {
         var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken, cancellationToken);
 
         if (storedToken is null)
         {
             return Result<bool>.Failure("Invalid token", 400);
         }
 
-        storedToken.IsRevoked = true;
-        await dbContext.SaveChangesAsync();
+        // Revoke all active tokens for this user, not just the submitted one
+        await RevokeAllUserTokensAsync(storedToken.UserId, cancellationToken);
 
         return Result<bool>.Success(true);
     }
 
-    // Generate JWT token with user claims (including roles)
+    public async Task<Result<bool>> AssignRoleAsync(
+        string userId, AssignRoleRequest request, CancellationToken cancellationToken = default)
+    {
+        ApplicationUser? user = await userManager.FindByIdAsync(userId);
+
+        if (user is null)
+            return Result<bool>.Failure("User not found", 404);
+
+        string[] validRoles = [AppRoles.Admin, AppRoles.Receptionist, AppRoles.Patient];
+
+        if (!validRoles.Contains(request.Role))
+            return Result<bool>.Failure("Invalid role", 400);
+
+        // Design Decision: each user has exactly ONE role at a time
+        IList<string> currentRoles = await userManager.GetRolesAsync(user);
+        await userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        await userManager.AddToRoleAsync(user, request.Role);
+
+        return Result<bool>.Success(true);
+    }
+
+    // Revoke all active (non-revoked, non-expired) refresh tokens for a user
+    private async Task RevokeAllUserTokensAsync(string userId, CancellationToken cancellationToken)
+    {
+        var activeTokens = await dbContext.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt >= DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Remove expired/revoked tokens older than the refresh token lifetime to prevent table bloat
+    private async Task CleanupExpiredTokensAsync(string userId, CancellationToken cancellationToken)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-jwtSettings.RefreshTokenExpiryDays);
+
+        var staleTokens = await dbContext.RefreshTokens
+            .Where(rt => rt.UserId == userId && (rt.IsRevoked || rt.ExpiresAt < DateTime.UtcNow) && rt.CreatedAt < cutoff)
+            .ToListAsync(cancellationToken);
+
+        if (staleTokens.Count > 0)
+        {
+            dbContext.RefreshTokens.RemoveRange(staleTokens);
+        }
+    }
+
     private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
         var claims = new List<Claim>
@@ -167,7 +233,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             new("fullName", user.FullName)
         };
 
-        // Add role claims — required for RequireRole() authorization to work with JWT
+        // Role claims required for RequireRole() authorization to work with JWT
         var roles = await userManager.GetRolesAsync(user);
         foreach (var role in roles)
         {
@@ -187,37 +253,11 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    // Generate cryptographically secure random refresh token
     private static string GenerateRefreshToken()
     {
         var randomBytes = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
-    }
-
-    // Assign a role to a user — Admin only
-    public async Task<Result<bool>> AssignRoleAsync(string userId, AssignRoleRequest request)
-    {
-        // Find user by ID
-        ApplicationUser? user = await userManager.FindByIdAsync(userId);
-
-        if (user is null)
-            return Result<bool>.Failure("User not found", 404);
-
-        // Validate role exists in AppRoles
-        string[] validRoles = [AppRoles.Admin, AppRoles.Receptionist, AppRoles.Patient];
-
-        if (!validRoles.Contains(request.Role))
-            return Result<bool>.Failure("Invalid role", 400);
-
-        // Remove all current roles
-        IList<string> currentRoles = await userManager.GetRolesAsync(user);
-        await userManager.RemoveFromRolesAsync(user, currentRoles);
-
-        // Assign new role
-        await userManager.AddToRoleAsync(user, request.Role);
-
-        return Result<bool>.Success(true);
     }
 }
