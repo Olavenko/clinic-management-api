@@ -1,4 +1,4 @@
-# Sprint 5 — Appointments + Business Logic
+﻿# Sprint 5 — Appointments + Business Logic
 
 **Project:** Clinic Management API  
 **Sprint Duration:** 1 Week  
@@ -14,7 +14,7 @@
 **Goal:** Define the Appointment entity with all relationships and status tracking
 
 ```markdown
-[ ] Create AppointmentStatus enum in Core/Models/
+[x] Create AppointmentStatus enum in Core/Models/
     public enum AppointmentStatus
     {
         Scheduled  = 0,  // default on creation
@@ -22,7 +22,7 @@
         Cancelled  = 2   // admin or receptionist cancelled it
     }
 
-[ ] Create Appointment model in Core/Models/
+[x] Create Appointment model in Core/Models/
     Properties:
     - Id (int)
     - PatientId (int, required, FK → Patient)
@@ -45,7 +45,7 @@
     - Only Cancelled can be hard deleted
     - This preserves audit trail without needing soft delete
 
-[ ] Configure Appointment entity in AppDbContext OnModelCreating
+[x] Configure Appointment entity in AppDbContext OnModelCreating
     - PatientId FK: .HasOne(a => a.Patient).WithMany().HasForeignKey(a => a.PatientId).OnDelete(DeleteBehavior.Restrict)
     - DoctorId FK: .HasOne(a => a.Doctor).WithMany().HasForeignKey(a => a.DoctorId).OnDelete(DeleteBehavior.Restrict)
 
@@ -54,14 +54,14 @@
     - Restrict → Database blocks deletion if appointments exist → Safe ✅
     - With Soft Delete on Patient/Doctor → they're never truly deleted → Restrict is safe ✅
 
-[ ] Add Appointments DbSet to AppDbContext
+[x] Add Appointments DbSet to AppDbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
 
-[ ] Add Appointment Migration
+[x] Add Appointment Migration
     Command: dotnet ef migrations add AddAppointments --project ClinicManagementAPI.Core
                                                       --startup-project ClinicManagementAPI.Api
 
-[ ] Apply Migration
+[x] Apply Migration
     Command: dotnet ef database update --project ClinicManagementAPI.Core
                                        --startup-project ClinicManagementAPI.Api
 ```
@@ -74,7 +74,7 @@
 **Goal:** Define request and response shapes with clear validation rules
 
 ```markdown
-[ ] Create AppointmentFilterRequest DTO in Api/DTOs/Appointments/
+[x] Create AppointmentFilterRequest DTO in Api/DTOs/Appointments/
     Inherits or wraps PaginationRequest (Page, PageSize, SearchTerm)
     Extra Properties:
     - DateFrom (DateOnly, optional) → filter appointments from this date
@@ -84,7 +84,7 @@
     ⚠️ SearchTerm filters by PatientName or DoctorName
     ⚠️ DateFrom and DateTo are inclusive
 
-[ ] Create CreateAppointmentRequest DTO in Api/DTOs/Appointments/
+[x] Create CreateAppointmentRequest DTO in Api/DTOs/Appointments/
     Properties:
     - PatientId (int, [Required])
     - DoctorId (int, [Required])
@@ -93,7 +93,7 @@
     - DurationMinutes (int, optional, [Range(15, 120)], default = 30)
     - Notes (string, optional, [MaxLength(500)])
 
-[ ] Create UpdateAppointmentRequest DTO in Api/DTOs/Appointments/
+[x] Create UpdateAppointmentRequest DTO in Api/DTOs/Appointments/
     Properties:
     - AppointmentDate (DateOnly, optional)
     - AppointmentTime (TimeOnly, optional)
@@ -104,11 +104,11 @@
     ⚠️ At least one field must be provided
     → Validate in AppointmentService: if all fields are null → Result.Failure(400)
 
-[ ] Create UpdateAppointmentStatusRequest DTO in Api/DTOs/Appointments/
+[x] Create UpdateAppointmentStatusRequest DTO in Api/DTOs/Appointments/
     Properties:
     - Status (AppointmentStatus, [Required])
 
-[ ] Create AppointmentResponse DTO in Api/DTOs/Appointments/
+[x] Create AppointmentResponse DTO in Api/DTOs/Appointments/
     Properties:
     - Id (int)
     - PatientId (int)
@@ -140,7 +140,7 @@ Only date/time can change  → Keeps appointment history clean ✅
 **Goal:** Define the contract before implementation — consistent with Result Pattern
 
 ```markdown
-[ ] Create IAppointmentService interface in Core/Interfaces/
+[x] Create IAppointmentService interface in Core/Interfaces/
     Methods (all return Result<T>):
     - Task<Result<PagedResponse<AppointmentResponse>>> GetAllAsync(AppointmentFilterRequest filter)
     - Task<Result<PagedResponse<AppointmentResponse>>> GetByPatientAsync(int patientId, PaginationRequest pagination)
@@ -208,7 +208,7 @@ Recommended approach for GetAllAsync / GetByIdAsync:
 ### Implementation
 
 ```markdown
-[ ] Create AppointmentService in Core/Services/
+[x] Create AppointmentService in Core/Services/
     Implements IAppointmentService
 
     GetAllAsync:
@@ -334,7 +334,7 @@ Recommended approach for GetAllAsync / GetByIdAsync:
     - If rule passes → Hard delete (not soft delete — status lifecycle handles audit trail)
     - Return Result.Success(true)
 
-[ ] Register IAppointmentService in Program.cs
+[x] Register IAppointmentService in Program.cs
     builder.Services.AddScoped<IAppointmentService, AppointmentService>()
 ```
 
@@ -361,7 +361,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
 **Goal:** Expose all Appointment endpoints with correct Role protection
 
 ```markdown
-[ ] Create AppointmentEndpoints.cs in Api/Endpoints/
+[x] Create AppointmentEndpoints.cs in Api/Endpoints/
 
     GET /api/appointments
     - Requires JWT Token
@@ -435,7 +435,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
     - Returns 401 if no token
     - Returns 403 if not Admin
 
-[ ] Map Appointment endpoints in Program.cs
+[x] Map Appointment endpoints in Program.cs
     app.MapAppointmentEndpoints()
 ```
 
@@ -447,7 +447,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
 **Goal:** 70%+ coverage — Business Logic rules and Soft Delete interaction must be fully tested
 
 ```markdown
-[ ] Create Unit Tests in Tests/Unit/AppointmentServiceTests.cs
+[x] Create Unit Tests in Tests/Unit/AppointmentServiceTests.cs
 
     — CreateAsync tests (Business Rules):
     - CreateAsync_WithValidData_ReturnsSuccessResult
@@ -496,7 +496,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
     - DeleteAsync_WithCompletedAppointment_ReturnsFailureResult
     - DeleteAsync_WithInvalidId_ReturnsFailureResult
 
-[ ] Create Integration Tests in Tests/Integration/AppointmentEndpointsTests.cs
+[x] Create Integration Tests in Tests/Integration/AppointmentEndpointsTests.cs
     Test cases:
     — Authorization tests:
     - GET    /api/appointments              → 200 with Admin token
@@ -531,11 +531,21 @@ Cancel first, then delete    → Audit trail is preserved ✅
     - DELETE /api/appointments/{id}         → 204 with Cancelled appointment
     - DELETE /api/appointments/{id}         → 400 with Scheduled appointment
 
-[ ] Run all tests and verify they pass
+[x] Run all tests and verify they pass
     Command: dotnet test --verbosity normal
 
-[ ] Check coverage
+[x] Check coverage
+    Step 1 — Collect coverage data (generates XML):
     Command: dotnet test --collect:"XPlat Code Coverage"
+
+    Step 2 — Install ReportGenerator (one-time):
+    Command: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    Step 3 — Generate HTML report from the XML:
+    Command: reportgenerator -reports:"ClinicManagementAPI.Tests\TestResults\**\coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;TextSummary"
+
+    Step 4 — Open the report in browser:
+    Command: Start-Process "coveragereport\index.html"
 ```
 
 ---
@@ -546,7 +556,7 @@ Cancel first, then delete    → Audit trail is preserved ✅
 **Goal:** CI pipeline runs all tests including Appointment and Soft Delete interaction tests
 
 ```markdown
-[ ] Push to GitHub and verify:
+[x] Push to GitHub and verify:
     ✅ Build passes
     ✅ All Auth tests still pass
     ✅ All Patient tests still pass (including Soft Delete)
@@ -563,9 +573,9 @@ Cancel first, then delete    → Audit trail is preserved ✅
 **Goal:** Create and update necessary system diagrams for Sprint 5 features (Appointments, Business Logic)
 
 ```markdown
-[ ] Review docs/ to determine required diagrams for Sprint 5
-[ ] Update/Create Component/Sequence Diagrams for appointments services
-[ ] Verify PlantUML/Markdown diagrams render correctly
+[x] Review docs/ to determine required diagrams for Sprint 5
+[x] Update/Create Component/Sequence Diagrams for appointments services
+[x] Verify PlantUML/Markdown diagrams render correctly
 ```
 
 ---

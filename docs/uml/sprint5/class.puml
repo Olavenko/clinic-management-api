@@ -1,0 +1,230 @@
+@startuml
+' -------------------------------------------------------
+' File: class.puml
+' -------------------------------------------------------
+' Purpose   : Class Diagram — Appointment Domain & Service Architecture
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-15
+' Sprint    : 5 — Appointments + Business Logic
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Class Diagram — Appointment Domain Architecture (Sprint 5)
+
+' === Header/Footer ===
+header Clinic Management System - Domain Model
+footer Appointment Module Structural Design
+
+' === Layout Settings ===
+skinparam groupInheritance 2
+skinparam nodesep 60
+skinparam ranksep 60
+
+' === Packages ===
+
+package "ClinicManagementAPI.Core.Interfaces" #161B22 {
+
+    interface "IAppointmentService" << Interface >> {
+        + GetAllAsync(filter: AppointmentFilterRequest) : Task<Result<PagedResponse<AppointmentResponse>>>
+        + GetByPatientAsync(patientId: int, pagination: PaginationRequest) : Task<Result<PagedResponse<AppointmentResponse>>>
+        + GetByDoctorAsync(doctorId: int, pagination: PaginationRequest) : Task<Result<PagedResponse<AppointmentResponse>>>
+        + GetByIdAsync(id: int) : Task<Result<AppointmentResponse>>
+        + CreateAsync(request: CreateAppointmentRequest) : Task<Result<AppointmentResponse>>
+        + UpdateAsync(id: int, request: UpdateAppointmentRequest) : Task<Result<AppointmentResponse>>
+        + UpdateStatusAsync(id: int, request: UpdateAppointmentStatusRequest) : Task<Result<AppointmentResponse>>
+        + DeleteAsync(id: int) : Task<Result<bool>>
+    }
+}
+
+package "ClinicManagementAPI.Core.Models" #0D1117 {
+
+    class "<color:#3FB950><&box></color> Result<T>" << (S,#3FB950) Structure >> {
+        + IsSuccess : bool
+        + Value : T
+        + Error : string
+        + StatusCode : int
+        {static} + Success(value: T) : Result<T>
+        {static} + Failure(error: string, code: int) : Result<T>
+    }
+
+    enum "<color:#A371F7><&list></color> AppointmentStatus" << Enum >> {
+        Scheduled = 0
+        Completed = 1
+        Cancelled = 2
+    }
+
+    class "<color:#58A6FF><&medical-cross></color> Patient" << (E,#D29922) Entity >> {
+        + Id : int
+        + FullName : string
+        + Email : string
+        -- ISoftDeletable --
+        + IsDeleted : bool
+        + DeletedAt : DateTime?
+    }
+
+    class "<color:#3FB950><&stethoscope></color> Doctor" << (E,#D29922) Entity >> {
+        + Id : int
+        + FullName : string
+        + Specialization : string
+        + IsAvailable : bool
+        -- ISoftDeletable --
+        + IsDeleted : bool
+        + DeletedAt : DateTime?
+    }
+
+    class "<color:#D29922><&calendar></color> Appointment" << (E,#D29922) Entity >> {
+        + Id : int
+        + PatientId : int <<FK>>
+        + DoctorId : int <<FK>>
+        + AppointmentDate : DateOnly
+        + AppointmentTime : TimeOnly
+        + DurationMinutes : int <<default=30>>
+        + Status : AppointmentStatus
+        + Notes : string?
+        + CreatedAt : DateTime
+        + UpdatedAt : DateTime?
+        -- Navigation --
+        + Patient : Patient
+        + Doctor : Doctor
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs.Appointments" #161B22 {
+
+    class "AppointmentFilterRequest" << DTO >> {
+        + Page : int <<inherited>>
+        + PageSize : int <<inherited>>
+        + SearchTerm : string? <<inherited>>
+        + DateFrom : DateOnly?
+        + DateTo : DateOnly?
+        + Status : AppointmentStatus?
+    }
+
+    class "CreateAppointmentRequest" << DTO >> {
+        + PatientId : int <<Required>>
+        + DoctorId : int <<Required>>
+        + AppointmentDate : DateOnly <<Required>>
+        + AppointmentTime : TimeOnly <<Required>>
+        + DurationMinutes : int <<Range(15,120), default=30>>
+        + Notes : string? <<MaxLen(500)>>
+    }
+
+    class "UpdateAppointmentRequest" << DTO >> {
+        + AppointmentDate : DateOnly?
+        + AppointmentTime : TimeOnly?
+        + DurationMinutes : int? <<Range(15,120)>>
+        + Notes : string? <<MaxLen(500)>>
+    }
+
+    class "UpdateAppointmentStatusRequest" << DTO >> {
+        + Status : AppointmentStatus <<Required>>
+    }
+
+    class "AppointmentResponse" << DTO >> {
+        + Id : int
+        + PatientId : int
+        + PatientName : string
+        + DoctorId : int
+        + DoctorName : string
+        + DoctorSpecialization : string
+        + AppointmentDate : DateOnly
+        + AppointmentTime : TimeOnly
+        + DurationMinutes : int
+        + Status : string
+        + Notes : string?
+        + CreatedAt : DateTime
+        + UpdatedAt : DateTime?
+    }
+}
+
+package "ClinicManagementAPI.Core.DTOs" #161B22 {
+
+    class "PaginationRequest" << DTO >> {
+        + Page : int <<default=1, Range(1,+inf)>>
+        + PageSize : int <<default=10, Range(1,50)>>
+        + SearchTerm : string?
+    }
+
+    class "PagedResponse<T>" << DTO >> {
+        + Items : IEnumerable<T>
+        + TotalCount : int
+        + TotalPages : int <<computed>>
+        + HasNext : bool <<computed>>
+        + HasPrevious : bool <<computed>>
+    }
+}
+
+' === Relationships ===
+
+' (1) Appointment references Patient
+Appointment -[#58A6FF]left-> Patient : " (1) FK PatientId\n(Restrict Delete) "
+
+' (2) Appointment references Doctor
+Appointment -[#3FB950]right-> Doctor : " (2) FK DoctorId\n(Restrict Delete) "
+
+' (3) Appointment has Status
+Appointment -[#A371F7]up-> AppointmentStatus : " (3) Status "
+
+' (4) AppointmentService implements IAppointmentService
+"ClinicManagementAPI.Core.Services.AppointmentService" .up.|> IAppointmentService : " (4) Realizes "
+
+' (5) IAppointmentService returns Result<T>
+IAppointmentService -[#3FB950]right-> "Result<T>" : " (5) Wraps "
+
+' (6) Service consumes CreateAppointmentRequest
+CreateAppointmentRequest -[#58A6FF]right-> IAppointmentService : " (6) Input "
+
+' (7) Service consumes UpdateAppointmentRequest
+UpdateAppointmentRequest -[#58A6FF]right-> IAppointmentService : " (7) Input "
+
+' (8) Service returns AppointmentResponse
+IAppointmentService -[#58A6FF]down-> AppointmentResponse : " (8) Output "
+
+' (9) Service consumes AppointmentFilterRequest
+AppointmentFilterRequest -[#58A6FF]right-> IAppointmentService : " (9) Input "
+
+' (10) AppointmentFilterRequest inherits PaginationRequest
+AppointmentFilterRequest -up-|> PaginationRequest : " (10) Extends "
+
+' (11) Service returns PagedResponse
+IAppointmentService -[#58A6FF]down-> "PagedResponse<T>" : " (11) Wraps Output "
+
+' === Notes ===
+
+note top of Appointment
+    **No Soft Delete** — uses Status lifecycle.
+    Status transitions:
+    * Scheduled -> Completed ✅
+    * Scheduled -> Cancelled ✅
+    * Others -> ❌
+    ----
+    Only **Cancelled** appointments
+    can be **hard deleted**.
+    ----
+    **Overlap Formula**:
+    existingStart < newEnd
+    AND newStart < existingEnd
+end note
+
+note bottom of UpdateAppointmentRequest
+    All fields optional for
+    **partial update**. Service
+    rejects if all fields are null.
+    ----
+    No PatientId/DoctorId —
+    cannot change who the
+    appointment belongs to.
+end note
+
+note right of AppointmentStatus
+    **Status Transitions**:
+    Scheduled -> Completed ✅
+    Scheduled -> Cancelled ✅
+    Completed -> anything ❌
+    Cancelled -> anything ❌
+end note
+
+@enduml
