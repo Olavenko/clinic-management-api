@@ -107,7 +107,8 @@
 **Goal:** Define the contract before implementation — consistent with Result Pattern from Sprint 2
 
 ```markdown
-[ ] Create IDoctorService interface in Core/Interfaces/
+[x] Create IDoctorService interface in ClinicManagementAPI.Core/Interfaces/
+    Command: New-Item -Path "ClinicManagementAPI.Core/Interfaces/IDoctorService.cs" -ItemType File -Force
     Methods (all return Result<T>):
     - Task<Result<PagedResponse<DoctorResponse>>> GetAllAsync(PaginationRequest pagination)
     - Task<Result<PagedResponse<DoctorResponse>>> GetAvailableAsync(PaginationRequest pagination)
