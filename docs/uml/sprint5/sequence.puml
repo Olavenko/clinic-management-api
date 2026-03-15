@@ -1,0 +1,210 @@
+@startuml
+' -------------------------------------------------------
+' File: sequence.puml
+' -------------------------------------------------------
+' Purpose   : Sequence — Appointment CRUD Flow (Business Rules + Status Lifecycle)
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-15
+' Sprint    : 5 — Appointments + Business Logic
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Sequence — Appointment CRUD Flow (Sprint 5)
+
+' === Header/Footer ===
+header Clinic Management System - Appointment Module
+footer Appointment CRUD + Business Rules + Status Lifecycle
+
+' === Global Settings ===
+autonumber "<b>[00]</b>"
+
+' === Participants by Layer ===
+
+box "Presentation / API Layer" #161B22
+    actor "<color:#E6EDF3><&person></color> Client" as CLIENT
+    participant "<color:#D29922><&shield></color> AppointmentEndpoints" as ENDP << (E,#58A6FF) Minimal API >>
+    participant "<color:#F85149><&cog></color> Authorization" as AUTH << (M,#F85149) Middleware >>
+end box
+
+box "Core / Application Layer" #0D1117
+    participant "<color:#D29922><&cog></color> AppointmentService" as SVC << (S,#3FB950) Service >>
+end box
+
+box "Infrastructure / Persistence" #161B22
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << (D,#D29922) Database >>
+end box
+
+== Create Appointment (POST /api/appointments) — Admin + Receptionist ==
+
+CLIENT -> ENDP : POST /api/appointments\n(CreateAppointmentRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires:\nAdmin OR Receptionist
+AUTH --> ENDP : Authorized (or 401/403)
+deactivate AUTH
+
+ENDP -> SVC : CreateAsync(request)
+activate SVC
+
+note over SVC #21262D: <color:#58A6FF>Rule 1</color> — Patient must exist\n(Global Query Filter excludes soft-deleted)
+
+SVC -> DB : SELECT FROM Patients\nWHERE Id = {patientId}\nAND IsDeleted = false
+activate DB
+DB --> SVC : patient / null
+deactivate DB
+
+alt patient is null
+    SVC --> ENDP : Result.Failure("Patient not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+else patient found
+end
+
+note over SVC #21262D: <color:#3FB950>Rule 2</color> — Doctor must exist AND be available
+
+SVC -> DB : SELECT FROM Doctors\nWHERE Id = {doctorId}\nAND IsDeleted = false
+activate DB
+DB --> SVC : doctor / null
+deactivate DB
+
+alt doctor is null
+    SVC --> ENDP : Result.Failure("Doctor not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+else doctor.IsAvailable = false
+    SVC --> ENDP : Result.Failure("Doctor is not available", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else doctor found and available
+end
+
+note over SVC #21262D: <color:#D29922>Rule 3</color> — Appointment date cannot be in the past
+
+alt AppointmentDate < today
+    SVC --> ENDP : Result.Failure("Appointment date\ncannot be in the past", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else date is valid
+end
+
+note over SVC #21262D: <color:#F85149>Rule 4</color> — Patient overlap check\n**Formula**: existingStart < newEnd\nAND newStart < existingEnd
+
+SVC -> DB : SELECT FROM Appointments\nWHERE PatientId = {patientId}\nAND Date = {date}\nAND Status = Scheduled\nAND overlap formula
+activate DB
+DB --> SVC : conflict / null
+deactivate DB
+
+alt patient conflict found
+    SVC --> ENDP : Result.Failure("Patient already has\nan appointment at this time", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else no patient conflict
+end
+
+note over SVC #21262D: <color:#A371F7>Rule 5</color> — Doctor overlap check\n(same formula, same date)
+
+SVC -> DB : SELECT FROM Appointments\nWHERE DoctorId = {doctorId}\nAND Date = {date}\nAND Status = Scheduled\nAND overlap formula
+activate DB
+DB --> SVC : conflict / null
+deactivate DB
+
+alt doctor conflict found
+    SVC --> ENDP : Result.Failure("Doctor already has\nan appointment at this time", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else no doctor conflict
+    note over SVC: All 5 rules passed ✅\nCreate appointment\nStatus = Scheduled\nCreatedAt = UtcNow
+    SVC -> DB : INSERT INTO Appointments
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+
+    SVC --> ENDP : Result.Success(AppointmentResponse)
+    ENDP --> CLIENT : 201 Created\n(AppointmentResponse)
+end
+
+deactivate SVC
+deactivate ENDP
+
+== Update Status (PATCH /api/appointments/{id}/status) — Admin + Receptionist ==
+
+CLIENT -> ENDP : PATCH /api/appointments/{id}/status\n(UpdateAppointmentStatusRequest + JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+AUTH --> ENDP : Authorized
+deactivate AUTH
+
+ENDP -> SVC : UpdateStatusAsync(id, request)
+activate SVC
+
+SVC -> DB : SELECT FROM Appointments\nWHERE Id = {id}
+activate DB
+DB --> SVC : appointment / null
+deactivate DB
+
+alt appointment is null
+    SVC --> ENDP : Result.Failure("Appointment not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+else appointment.Status = Completed
+    SVC --> ENDP : Result.Failure("Completed appointments\ncannot be changed", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else appointment.Status = Cancelled
+    SVC --> ENDP : Result.Failure("Cancelled appointments\ncannot be changed", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else appointment.Status = Scheduled
+    note over SVC #21262D: <color:#3FB950>Valid transitions:</color>\nScheduled -> Completed ✅\nScheduled -> Cancelled ✅
+
+    SVC -> DB : UPDATE Appointments SET\nStatus = {newStatus},\nUpdatedAt = UtcNow
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+
+    SVC --> ENDP : Result.Success(AppointmentResponse)
+    ENDP --> CLIENT : 200 OK\n(AppointmentResponse)
+end
+
+deactivate SVC
+deactivate ENDP
+
+== Delete Appointment (DELETE /api/appointments/{id}) — Admin Only ==
+
+CLIENT -> ENDP : DELETE /api/appointments/{id}\n(JWT)
+activate ENDP
+
+ENDP -> AUTH : Check JWT + Role
+activate AUTH
+note right AUTH: Requires: Admin ONLY\n(Receptionist -> 403)
+AUTH --> ENDP : Authorized
+deactivate AUTH
+
+ENDP -> SVC : DeleteAsync(id)
+activate SVC
+
+SVC -> DB : SELECT FROM Appointments\nWHERE Id = {id}
+activate DB
+DB --> SVC : appointment / null
+deactivate DB
+
+alt appointment is null
+    SVC --> ENDP : Result.Failure("Appointment not found", 404)
+    ENDP --> CLIENT : 404 Not Found
+else appointment.Status != Cancelled
+    SVC --> ENDP : Result.Failure("Only cancelled appointments\ncan be deleted", 400)
+    ENDP --> CLIENT : 400 Bad Request
+else appointment.Status = Cancelled
+    note over SVC #21262D: <color:#F85149>HARD DELETE</color>\nStatus lifecycle handles audit trail.\nOnly Cancelled -> deletable.
+
+    SVC -> DB : DELETE FROM Appointments\nWHERE Id = {id}
+    activate DB
+    DB --> SVC : OK
+    deactivate DB
+
+    SVC --> ENDP : Result.Success(true)
+    ENDP --> CLIENT : 204 No Content
+end
+
+deactivate SVC
+deactivate ENDP
+
+@enduml

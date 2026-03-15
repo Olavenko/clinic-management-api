@@ -1,0 +1,161 @@
+@startuml
+' -------------------------------------------------------
+' File: component.puml
+' -------------------------------------------------------
+' Purpose   : Component — Updated Architecture with Appointment CRUD
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-15
+' Sprint    : 5 — Appointments + Business Logic
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Component — Appointment CRUD & Architecture Overview (Sprint 5)
+
+' === Header/Footer ===
+header Clinic Management System - Architecture Overview
+footer Sprint 5 — Appointments + Business Logic (Admin + Receptionist)
+
+' === Layout Settings ===
+left to right direction
+skinparam nodesep 50
+skinparam ranksep 50
+
+' === External/CI Layer ===
+cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
+    component "<color:#58A6FF><&cog></color> GitHub Actions" as CI << CI/CD >> #0D1117
+    note bottom of CI: Build, Lint, Test\n(dotnet build/test)\n181 tests
+}
+
+' === Application System ===
+package "ClinicManagementAPI System" #0D1117 {
+
+    package "<color:#58A6FF><&box></color> Api Project (.NET 10)" as API << Layer >> {
+        component "<color:#F85149><&shield></color> AuthEndpoints" as AUTH_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> PatientEndpoints" as PAT_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> DoctorEndpoints" as DOC_ENDP << Minimal API >>
+        component "<color:#D29922><&shield></color> AppointmentEndpoints" as APT_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> UserEndpoints" as USR_ENDP << Minimal API >>
+        component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
+        component "ValidationFilter" as FILT << EndpointFilter >>
+    }
+
+    package "<color:#58A6FF><&box></color> Core Project (.NET 10)" as CORE << Layer >> {
+        component "<color:#3FB950><&cog></color> AuthService" as AUTH_SVC << Service >>
+        component "<color:#3FB950><&cog></color> PatientService" as PAT_SVC << Service >>
+        component "<color:#3FB950><&cog></color> DoctorService" as DOC_SVC << Service >>
+        component "<color:#D29922><&cog></color> AppointmentService" as APT_SVC << Service >>
+        interface "IAuthService" as AUTH_INTF << Interface >>
+        interface "IPatientService" as PAT_INTF << Interface >>
+        interface "IDoctorService" as DOC_INTF << Interface >>
+        interface "IAppointmentService" as APT_INTF << Interface >>
+
+        folder "Data" as DATA_FOLDER {
+            component "<color:#D29922><&hard-drive></color> AppDbContext" as DATA << Persistence >>
+            component "DTOs" as DTO
+            component "Models" as MOD
+        }
+    }
+
+    package "Tests Project" as TESTS << Layer >> {
+        component "Unit Tests" as UT << xUnit >>
+        component "Integration" as IT << xUnit >>
+    }
+}
+
+' === Infrastructure Layer ===
+node "External Infrastructure" #161B22 {
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << Database >>
+    component "<color:#A371F7><&shield></color> ASP.NET Core\nIdentity" as IDENTITY << Package >>
+}
+
+' === Presentation Layer (External) ===
+actor "Web/Mobile Client" as CLIENT
+
+' === Relationships ===
+
+' (1) CI flow
+CI -[#39C5CF]down-> API : " (1) Deploys to "
+
+' (2) CI tests
+CI -[#3FB950]down-> TESTS : " (2) Executes "
+
+' (3) Patient CRUD
+CLIENT -[#58A6FF]right-> PAT_ENDP : " (3) Patient CRUD "
+
+' (4) Auth Requests
+CLIENT -[#58A6FF]right-> AUTH_ENDP : " (4) Auth Requests "
+
+' (5) Assign Role
+CLIENT -[#58A6FF]right-> USR_ENDP : " (5) Assign Role "
+
+' (6) Doctor CRUD
+CLIENT -[#3FB950]right-> DOC_ENDP : " (6) Doctor CRUD\n(GET=Public, Write=Admin) "
+
+' (7) Appointment CRUD
+CLIENT -[#D29922]right-> APT_ENDP : " (7) Appointment CRUD\n(Admin + Receptionist,\nDelete=Admin Only) "
+
+' (8) JWT + Role Check
+MW -[#58A6FF]down-> PAT_ENDP : " (8) JWT + Role Check "
+MW -[#58A6FF]down-> DOC_ENDP : " (8) JWT (Write only) "
+MW -[#D29922]down-> APT_ENDP : " (8) JWT + Role Check "
+
+' (9) Validates
+FILT -[#58A6FF]down-> DTO : " (9) Validates "
+
+' (10) Injects Patient Service
+PAT_ENDP -[#58A6FF]down-> PAT_INTF : " (10) Injects "
+
+' (11) Implements Patient Service
+PAT_SVC .[#3FB950]left.|> PAT_INTF : " (11) Implements "
+
+' (12) Injects Doctor Service
+DOC_ENDP -[#58A6FF]down-> DOC_INTF : " (12) Injects "
+
+' (13) Implements Doctor Service
+DOC_SVC .[#3FB950]left.|> DOC_INTF : " (13) Implements "
+
+' (14) Injects Appointment Service
+APT_ENDP -[#D29922]down-> APT_INTF : " (14) Injects "
+
+' (15) Implements Appointment Service
+APT_SVC .[#D29922]left.|> APT_INTF : " (15) Implements "
+
+' (16) Injects Auth Service
+AUTH_ENDP -[#58A6FF]down-> AUTH_INTF : " (16) Injects "
+
+' (17) Injects Auth Service
+USR_ENDP -[#58A6FF]down-> AUTH_INTF : " (17) Injects "
+
+' (18) Implements Auth Service
+AUTH_SVC .[#3FB950]left.|> AUTH_INTF : " (18) Implements "
+
+' (19) Persists via
+PAT_SVC -[#3FB950]down-> DATA : " (19) Persists via "
+DOC_SVC -[#3FB950]down-> DATA : " (19) Persists via "
+APT_SVC -[#D29922]down-> DATA : " (19) Persists via "
+
+' (20) Manipulates
+PAT_SVC -[#3FB950]down-> MOD : " (20) Manipulates "
+DOC_SVC -[#3FB950]down-> MOD : " (20) Manipulates "
+APT_SVC -[#D29922]down-> MOD : " (20) Manipulates "
+
+' (21) EF Core 10
+DATA -[#A371F7]down-> DB : " (21) EF Core 10 "
+
+' (22) Stores Users
+DATA -[#A371F7]right-> IDENTITY : " (22) Stores Users "
+
+' (23) Mocks & Tests
+UT .[#F85149]up.> PAT_SVC : " (23) Tests "
+UT .[#F85149]up.> DOC_SVC : " (23) Tests "
+UT .[#F85149]up.> APT_SVC : " (23) Tests "
+
+' (24) WebApplicationFactory
+IT .[#F85149]up.> PAT_ENDP : " (24) WebApplicationFactory "
+IT .[#F85149]up.> DOC_ENDP : " (24) WebApplicationFactory "
+IT .[#F85149]up.> APT_ENDP : " (24) WebApplicationFactory "
+
+@enduml

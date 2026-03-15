@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
                   .HasFilter("IsDeleted = 0");
 
             entity.HasQueryFilter(d => !d.IsDeleted);
+        });
+
+        modelBuilder.Entity<Appointment>(entity =>
+        {
+            // Restrict delete: deleting a patient must not cascade-delete appointments
+            entity.HasOne(a => a.Patient)
+                  .WithMany()
+                  .HasForeignKey(a => a.PatientId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // Restrict delete: deleting a doctor must not cascade-delete appointments
+            entity.HasOne(a => a.Doctor)
+                  .WithMany()
+                  .HasForeignKey(a => a.DoctorId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

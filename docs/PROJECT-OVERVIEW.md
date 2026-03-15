@@ -1,6 +1,6 @@
 ﻿# 🏥 Clinic Management API — Project Overview
 
-## Status: 🟡 In Development (Sprint 5 — Appointments)
+## Status: 🟡 In Development (Sprint 6 — Polish)
 
 ---
 
@@ -160,8 +160,8 @@ Cancelled  → anything   ❌ (final state)
 | **Sprint 2**             | Authentication               | Identity, JWT, Refresh Token, Roles seeding, Input Validation, Logout                                    | ✅ Done    |
 | **Sprint 3**             | Patients CRUD                | ISoftDeletable, Patient model, Soft Delete, Global Query Filter, Search, Pagination, Assign Role         | ✅ Done    |
 | **Sprint 4**             | Doctors CRUD                 | Doctor model, Soft Delete, Public GET endpoints, Available doctors filter, Admin-only write, 118 tests   | ✅ Done    |
-| **Sprint 5**             | Appointments                 | Business rules, Overlap detection, Status transitions, Date/Status filters                               | 🟡 Active  |
-| **Sprint 6**             | Polish                       | Error consistency, Scalar UI, README, Code cleanup, Git strategy, Coverage review                        | ⬜ Pending |
+| **Sprint 5**             | Appointments                 | Business rules, Overlap detection, Status transitions, Date/Status filters, 181 tests                    | ✅ Done    |
+| **Sprint 6**             | Polish                       | Error consistency, Scalar UI, README, Code cleanup, Git strategy, Coverage review                        | 🟡 Active  |
 
 ## What This Project Demonstrates
 
@@ -173,7 +173,11 @@ Cancelled  → anything   ❌ (final state)
 - Soft Delete with EF Core Global Query Filters (`IsDeleted = 0`)
 - `IgnoreQueryFilters()` for email uniqueness across soft-deleted records
 - `DeleteBehavior.Restrict` on FK relationships to protect data integrity
+- Overlap detection formula for appointment scheduling (`existingStart < newEnd AND newStart < existingEnd`)
+- Status lifecycle for appointments (Scheduled → Completed/Cancelled) instead of soft delete
+- Smart conflict checks that exclude the current appointment during updates (no self-conflict)
+- Graceful null handling for soft-deleted patient/doctor names in appointment responses
 - Default Patient role on registration to prevent privilege escalation
-- Highly tested code with 118 passing unit/integration tests and 100% service coverage
+- Highly tested code with 181 passing unit/integration tests and comprehensive service coverage
 - Proper integration testing with WebApplicationFactory spinning up in-memory instances
 - Health Check endpoint for production monitoring readiness

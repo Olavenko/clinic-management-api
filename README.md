@@ -27,10 +27,10 @@ ClinicManagementAPI/
 │
 ├── ClinicManagementAPI.Core/         # Core/business layer (knows nothing about Web)
 │   ├── Data/                         # AppDbContext, DatabaseSeeder
-│   ├── DTOs/                         # All DTOs (Auth/, Patients/, Doctors/)
-│   ├── Interfaces/                   # Service contracts (IAuthService, IPatientService, IDoctorService)
+│   ├── DTOs/                         # All DTOs (Auth/, Patients/, Doctors/, Appointments/)
+│   ├── Interfaces/                   # Service contracts (IAuthService, IPatientService, IDoctorService, IAppointmentService)
 │   ├── Models/                       # Entities, enums, Result<T>, JwtSettings
-│   ├── Services/                     # AuthService, PatientService, DoctorService
+│   ├── Services/                     # AuthService, PatientService, DoctorService, AppointmentService
 │   └── Migrations/                   # EF Core migrations
 │
 ├── ClinicManagementAPI.Tests/        # Test project
@@ -59,6 +59,7 @@ Comprehensive UML documentation is maintained in the `docs/uml/` directory, crea
 - **Sprint 2**: Authentication Sequence, Use Case, and Class Diagrams (`docs/uml/sprint2/`)
 - **Sprint 3**: Patients CRUD Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint3/`)
 - **Sprint 4**: Doctors CRUD Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint4/`)
+- **Sprint 5**: Appointments + Business Logic Component, Sequence, ERD, and Class Diagrams (`docs/uml/sprint5/`)
 
 High-fidelity `.svg` vector images with built-in OpenIconic sprites are exported into the respective `exports/` subfolders for easy viewing. Learn how to generate or modify these diagrams by reading `docs/uml/Diagrams-Readme.md`.
 
@@ -107,31 +108,39 @@ The API will start at `https://localhost:5001` (or the port configured in `launc
 - [x] **Sprint 2** — Authentication (JWT + Refresh Token + Roles Setup) *(Completed: 2026-03-14)*
 - [x] **Sprint 3** — Patients CRUD + Role-based Authorization + Assign Role *(Completed: 2026-03-14)*
 - [x] **Sprint 4** — Doctors CRUD + Public GET + Admin Write + Soft Delete *(Completed: 2026-03-15)*
-- [ ] **Sprint 5** — Appointments + Business Logic *(Planned)*
+- [x] **Sprint 5** — Appointments + Business Logic (Overlap Detection, Status Lifecycle) *(Completed: 2026-03-15)*
 - [ ] **Sprint 6** — Polish + Documentation + Coverage Review *(Planned)*
 
 ## API Endpoints
 
-| Method   | Endpoint                 | Description                               |
-|----------|--------------------------|-------------------------------------------|
-| `GET`    | `/health`                | Health check (API + database)             |
-| `GET`    | `/openapi/v1.json`       | OpenAPI specification (dev only)          |
-| `POST`   | `/api/auth/register`     | Register a new user                       |
-| `POST`   | `/api/auth/login`        | Login and receive JWT & Refresh Token     |
-| `POST`   | `/api/auth/refresh`      | Refresh an expired JWT using refresh token|
-| `POST`   | `/api/auth/logout`       | Logout and revoke refresh token           |
-| `PUT`    | `/api/users/{id}/role`   | Assign a role to a user                   |
-| `GET`    | `/api/patients`          | Get a paginated list of patients          |
-| `GET`    | `/api/patients/{id}`     | Get a specific patient by ID              |
-| `POST`   | `/api/patients`          | Add a new patient                         |
-| `PUT`    | `/api/patients/{id}`     | Update an existing patient                |
-| `DELETE` | `/api/patients/{id}`     | Soft delete a patient                     |
-| `GET`    | `/api/doctors`           | Get a paginated list of doctors (public)  |
-| `GET`    | `/api/doctors/available` | Get available doctors only (public)       |
-| `GET`    | `/api/doctors/{id}`      | Get a specific doctor by ID (public)      |
-| `POST`   | `/api/doctors`           | Add a new doctor (Admin only)             |
-| `PUT`    | `/api/doctors/{id}`      | Update an existing doctor (Admin only)    |
-| `DELETE` | `/api/doctors/{id}`      | Soft delete a doctor (Admin only)         |
+| Method   | Endpoint                          | Description                                      |
+|----------|-----------------------------------|--------------------------------------------------|
+| `GET`    | `/health`                         | Health check (API + database)                    |
+| `GET`    | `/openapi/v1.json`                | OpenAPI specification (dev only)                 |
+| `POST`   | `/api/auth/register`              | Register a new user                              |
+| `POST`   | `/api/auth/login`                 | Login and receive JWT & Refresh Token            |
+| `POST`   | `/api/auth/refresh`               | Refresh an expired JWT using refresh token       |
+| `POST`   | `/api/auth/logout`                | Logout and revoke refresh token                  |
+| `PUT`    | `/api/users/{id}/role`            | Assign a role to a user                          |
+| `GET`    | `/api/patients`                   | Get a paginated list of patients                 |
+| `GET`    | `/api/patients/{id}`              | Get a specific patient by ID                     |
+| `POST`   | `/api/patients`                   | Add a new patient                                |
+| `PUT`    | `/api/patients/{id}`              | Update an existing patient                       |
+| `DELETE` | `/api/patients/{id}`              | Soft delete a patient                            |
+| `GET`    | `/api/doctors`                    | Get a paginated list of doctors (public)         |
+| `GET`    | `/api/doctors/available`          | Get available doctors only (public)              |
+| `GET`    | `/api/doctors/{id}`               | Get a specific doctor by ID (public)             |
+| `POST`   | `/api/doctors`                    | Add a new doctor (Admin only)                    |
+| `PUT`    | `/api/doctors/{id}`               | Update an existing doctor (Admin only)           |
+| `DELETE` | `/api/doctors/{id}`               | Soft delete a doctor (Admin only)                |
+| `GET`    | `/api/appointments`               | Get paginated appointments (filtered)            |
+| `GET`    | `/api/appointments/{id}`          | Get a specific appointment by ID                 |
+| `GET`    | `/api/appointments/patient/{id}`  | Get appointments by patient                      |
+| `GET`    | `/api/appointments/doctor/{id}`   | Get appointments by doctor                       |
+| `POST`   | `/api/appointments`               | Book a new appointment                           |
+| `PUT`    | `/api/appointments/{id}`          | Update a scheduled appointment                   |
+| `PATCH`  | `/api/appointments/{id}/status`   | Change appointment status                        |
+| `DELETE` | `/api/appointments/{id}`          | Hard delete a cancelled appointment (Admin only) |
 
 ## Health Checks
 
@@ -158,14 +167,16 @@ Stack traces are **never** exposed to clients.
 
 ## Authorization
 
-| Endpoint Group       | Public | Patient | Receptionist | Admin |
-|----------------------|--------|---------|--------------|-------|
-| `GET /api/doctors*`  | Yes    | Yes     | Yes          | Yes   |
-| `POST/PUT/DELETE /api/doctors` | No | No | No          | Yes   |
-| `GET /api/patients*` | No     | No      | Yes          | Yes   |
-| `POST/PUT /api/patients` | No | No      | Yes          | Yes   |
-| `DELETE /api/patients` | No   | No      | No           | Yes   |
-| `PUT /api/users/{id}/role` | No | No    | No           | Yes   |
+| Endpoint Group                          | Public | Patient | Receptionist | Admin |
+|-----------------------------------------|--------|---------|--------------|-------|
+| `GET /api/doctors*`                     | Yes    | Yes     | Yes          | Yes   |
+| `POST/PUT/DELETE /api/doctors`          | No     | No      | No           | Yes   |
+| `GET /api/patients*`                    | No     | No      | Yes          | Yes   |
+| `POST/PUT /api/patients`                | No     | No      | Yes          | Yes   |
+| `DELETE /api/patients`                  | No     | No      | No           | Yes   |
+| `GET/POST/PUT/PATCH /api/appointments*` | No     | No      | Yes          | Yes   |
+| `DELETE /api/appointments`              | No     | No      | No           | Yes   |
+| `PUT /api/users/{id}/role`              | No     | No      | No           | Yes   |
 
 All new registrations default to the **Patient** role.
 
@@ -175,7 +186,7 @@ All new registrations default to the **Patient** role.
 dotnet test
 ```
 
-**118 tests** (unit + integration) covering Auth, Patient, and Doctor modules. All three services at **100% code coverage**.
+**181 tests** (unit + integration) covering Auth, Patient, Doctor, and Appointment modules — including overlap detection, status transitions, and soft-delete interaction tests.
 
 Tests are automatically run on every push and pull request via GitHub Actions CI.
 

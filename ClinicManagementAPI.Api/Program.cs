@@ -72,6 +72,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
 var app = builder.Build();
 
@@ -103,6 +104,7 @@ app.MapUserEndpoints();
 app.MapAuthEndpoints();
 app.MapPatientEndpoints();
 app.MapDoctorEndpoints();
+app.MapAppointmentEndpoints();
 
 // --- 8. Run ---
 app.Run();
