@@ -57,7 +57,8 @@
 **Goal:** Define request and response shapes — never expose the raw model to the API consumer
 
 ```markdown
-[ ] Create CreateDoctorRequest DTO in Api/DTOs/Doctors/
+[x] Create CreateDoctorRequest DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/CreateDoctorRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, [Required], [MinLength(2)], [MaxLength(100)])
     - Email (string, [Required], [EmailAddress])
@@ -66,7 +67,8 @@
     - YearsOfExperience (int, [Required], [Range(0, 60)])
     - Bio (string, optional, [MaxLength(500)])
 
-[ ] Create UpdateDoctorRequest DTO in Api/DTOs/Doctors/
+[x] Create UpdateDoctorRequest DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/UpdateDoctorRequest.cs" -ItemType File -Force
     Properties:
     - FullName (string, optional, [MinLength(2)], [MaxLength(100)])
     - Email (string, optional, [EmailAddress])
@@ -80,7 +82,8 @@
     BUT at least one field must be provided
     → Validate in DoctorService: if all fields are null → Result.Failure("At least one field must be provided", 400)
 
-[ ] Create DoctorResponse DTO in Api/DTOs/Doctors/
+[x] Create DoctorResponse DTO in ClinicManagementAPI.Core/DTOs/Doctors/
+    Command: New-Item -Path "ClinicManagementAPI.Core/DTOs/Doctors/DoctorResponse.cs" -ItemType File -Force
     Properties:
     - Id (int)
     - FullName (string)
