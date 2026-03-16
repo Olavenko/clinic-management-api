@@ -2,153 +2,177 @@
 
 ![CI](https://github.com/Olavenko/clinic-management-api/actions/workflows/build.yml/badge.svg)
 
-A production-ready RESTful API built with ASP.NET Core Minimal API for managing clinic appointments, patients, and doctors.
+A RESTful API for managing clinic appointments, patients, and doctors — built with ASP.NET Core Minimal API (.NET 10). Features JWT authentication with refresh tokens, role-based authorization, soft delete, appointment overlap detection, and 181 passing tests.
 
 ## Tech Stack
 
-- .NET 10 / ASP.NET Core Minimal API
-- Entity Framework Core + SQL Server
-- ASP.NET Core Identity + JWT Authentication
-- Refresh Token with secure revocation
-- Result Pattern for business error handling
-- xUnit + GitHub Actions CI
-- OpenAPI + Scalar UI
+- **.NET 10** / ASP.NET Core Minimal API
+- **Entity Framework Core** + SQL Server
+- **ASP.NET Core Identity** + JWT Bearer Tokens + Refresh Token Rotation
+- **Result Pattern** — business errors as return values, not exceptions
+- **xUnit** — 181 tests (unit + integration) with Coverlet coverage
+- **GitHub Actions CI** — build + test on every push
+- **OpenAPI** + Scalar UI for interactive API docs
 
-## Project Structure
+## Architecture
+
+3-project layered architecture with clear dependency direction:
 
 ```
-ClinicManagementAPI/
-├── ClinicManagementAPI.Api/       → Endpoints, Filters, Middleware, Program.cs
-├── ClinicManagementAPI.Core/      → Models, Services, Interfaces, Data, DTOs
-├── ClinicManagementAPI.Tests/     → Unit + Integration Tests
-├── Directory.Build.props          → Shared build settings
-├── Directory.Packages.props       → Central Package Management
-└── .editorconfig                  → Code style rules
+ClinicManagementAPI.Api        → Endpoints, Filters, Middleware, Program.cs
+ClinicManagementAPI.Core       → Models, Services, Interfaces, Data, DTOs, Migrations
+ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
 ```
 
-## Architecture Decisions
+`Api → Core ← Tests` — Core has zero dependency on the web layer.
 
-- 3-project Clean Architecture (Api → Core ← Tests)
-- Result Pattern for expected errors (no exceptions for business logic)
-- Global Error Handler for unexpected errors (DB crash, null ref)
-- Central Package Management for consistent NuGet versions
-- User Secrets for sensitive configuration (never committed)
+### Key Design Decisions
 
-## Role Permissions
+| Decision | Why |
+|----------|-----|
+| **Result Pattern** | Business errors (duplicate email, invalid status) returned as `Result<T>` — no exception-driven control flow |
+| **Global Exception Handler** | Unexpected errors caught centrally, returned as ProblemDetails JSON. Stack traces never exposed |
+| **Soft Delete** (Patient, Doctor) | EF Core Global Query Filters automatically exclude deleted records from all queries |
+| **Status Lifecycle** (Appointment) | Scheduled → Completed or Cancelled. Terminal states are immutable — no soft delete needed |
+| **Overlap Detection** | Formula-based time overlap check prevents double-booking for both patients and doctors |
+| **Central Package Management** | All NuGet versions in `Directory.Packages.props` — single source of truth |
+| **User Secrets** | Connection string and JWT key never committed to source control |
 
-| Action                  | Admin | Receptionist | Patient |
-|-------------------------|:-----:|:------------:|:-------:|
-| Register / Login        |  Yes  |     Yes      |   Yes   |
-| View doctors (public)   |  Yes  |     Yes      |   Yes   |
-| Manage patients (CRUD)  |  Yes  |     Yes      |   No    |
-| Manage appointments     |  Yes  |     Yes      |   No    |
-| Manage doctors (CRUD)   |  Yes  |     No       |   No    |
-| Delete patients         |  Yes  |     No       |   No    |
-| Delete appointments     |  Yes  |     No       |   No    |
-| Assign roles            |  Yes  |     No       |   No    |
+## Role-Based Authorization
+
+| Action | Admin | Receptionist | Patient |
+|--------|:-----:|:------------:|:-------:|
+| Register / Login | ✓ | ✓ | ✓ |
+| View doctors | ✓ | ✓ | ✓ |
+| Manage patients (CRUD) | ✓ | ✓ | — |
+| Manage appointments | ✓ | ✓ | — |
+| Manage doctors (CRUD) | ✓ | — | — |
+| Delete patients / appointments | ✓ | — | — |
+| Assign roles | ✓ | — | — |
+
+All new registrations default to the **Patient** role.
 
 ## API Endpoints
 
 ### Auth
-
-| Method | Endpoint               | Access   | Description              |
-|--------|------------------------|----------|--------------------------|
-| POST   | /api/auth/register     | Public   | Register new user        |
-| POST   | /api/auth/login        | Public   | Login and get JWT        |
-| POST   | /api/auth/refresh      | Public   | Refresh JWT token        |
-| POST   | /api/auth/logout       | JWT      | Revoke refresh token     |
-| PUT    | /api/users/{id}/role   | Admin    | Assign role to user      |
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/auth/register` | Public | Register new user |
+| POST | `/api/auth/login` | Public | Login → JWT + Refresh Token |
+| POST | `/api/auth/refresh` | Public | Refresh expired JWT |
+| POST | `/api/auth/logout` | JWT | Revoke refresh token |
+| PUT | `/api/users/{id}/role` | Admin | Assign role to user |
 
 ### Patients
-
-| Method | Endpoint               | Access           | Description          |
-|--------|------------------------|------------------|----------------------|
-| GET    | /api/patients          | Admin, Recep.    | List + search + page |
-| GET    | /api/patients/{id}     | Admin, Recep.    | Get by ID            |
-| POST   | /api/patients          | Admin, Recep.    | Create patient       |
-| PUT    | /api/patients/{id}     | Admin, Recep.    | Update patient       |
-| DELETE | /api/patients/{id}     | Admin            | Soft delete patient  |
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/patients` | Admin, Receptionist | List with search + pagination |
+| GET | `/api/patients/{id}` | Admin, Receptionist | Get by ID |
+| POST | `/api/patients` | Admin, Receptionist | Create patient |
+| PUT | `/api/patients/{id}` | Admin, Receptionist | Update patient |
+| DELETE | `/api/patients/{id}` | Admin | Soft delete |
 
 ### Doctors
-
-| Method | Endpoint                 | Access   | Description              |
-|--------|--------------------------|----------|--------------------------|
-| GET    | /api/doctors             | Public   | List + search + page     |
-| GET    | /api/doctors/available   | Public   | Available doctors only   |
-| GET    | /api/doctors/{id}        | Public   | Get by ID                |
-| POST   | /api/doctors             | Admin    | Create doctor            |
-| PUT    | /api/doctors/{id}        | Admin    | Update doctor            |
-| DELETE | /api/doctors/{id}        | Admin    | Soft delete doctor       |
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/doctors` | Public | List with search + pagination |
+| GET | `/api/doctors/available` | Public | Available doctors only |
+| GET | `/api/doctors/{id}` | Public | Get by ID |
+| POST | `/api/doctors` | Admin | Create doctor |
+| PUT | `/api/doctors/{id}` | Admin | Update doctor |
+| DELETE | `/api/doctors/{id}` | Admin | Soft delete |
 
 ### Appointments
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/api/appointments` | Admin, Receptionist | List with filters + pagination |
+| GET | `/api/appointments/{id}` | Admin, Receptionist | Get by ID |
+| GET | `/api/appointments/patient/{id}` | Admin, Receptionist | By patient |
+| GET | `/api/appointments/doctor/{id}` | Admin, Receptionist | By doctor |
+| POST | `/api/appointments` | Admin, Receptionist | Book appointment |
+| PUT | `/api/appointments/{id}` | Admin, Receptionist | Reschedule (scheduled only) |
+| PATCH | `/api/appointments/{id}/status` | Admin, Receptionist | Complete or cancel |
+| DELETE | `/api/appointments/{id}` | Admin | Delete (cancelled only) |
 
-| Method | Endpoint                          | Access        | Description             |
-|--------|-----------------------------------|---------------|-------------------------|
-| GET    | /api/appointments                 | Admin, Recep. | List + filter + page    |
-| GET    | /api/appointments/{id}            | Admin, Recep. | Get by ID               |
-| GET    | /api/appointments/patient/{id}    | Admin, Recep. | By patient              |
-| GET    | /api/appointments/doctor/{id}     | Admin, Recep. | By doctor               |
-| POST   | /api/appointments                 | Admin, Recep. | Book appointment        |
-| PUT    | /api/appointments/{id}            | Admin, Recep. | Reschedule              |
-| PATCH  | /api/appointments/{id}/status     | Admin, Recep. | Complete or cancel      |
-| DELETE | /api/appointments/{id}            | Admin         | Delete (cancelled only) |
+### Utility
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/health` | Public | API + database connectivity check |
 
 ## Business Rules
 
 - Appointments cannot be booked in the past
-- Patients cannot have overlapping appointments
-- Doctors cannot have overlapping appointments
-- Only available doctors can receive new appointments
-- Only scheduled appointments can be updated or rescheduled
-- Completed appointments cannot be changed
-- Cancelled appointments cannot be changed
-- Only cancelled appointments can be deleted (audit trail preserved)
-- Status transitions: Scheduled → Completed | Scheduled → Cancelled | others rejected
+- Patients and doctors cannot have overlapping appointments
+- Only **available** doctors can receive new appointments
+- Only **scheduled** appointments can be updated or rescheduled
+- Completed and cancelled appointments are **terminal states** — cannot be changed
+- Only **cancelled** appointments can be deleted (audit trail preserved)
+- Status transitions: `Scheduled → Completed` | `Scheduled → Cancelled` | all others rejected
 
-## How to Run
+## Testing
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/Olavenko/clinic-management-api.git
-cd clinic-management-api
-
-# 2. Configure User Secrets
-dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ClinicManagementAPI.Api
-dotnet user-secrets set "Jwt:Key" "your-secret-key-min-32-characters" --project ClinicManagementAPI.Api
-
-# 3. Apply migrations
-dotnet ef database update --project ClinicManagementAPI.Core --startup-project ClinicManagementAPI.Api
-
-# 4. Run the API
-dotnet run --project ClinicManagementAPI.Api
-
-# 5. Open Scalar UI
-# Navigate to: https://localhost:<port>/scalar/v1
-```
-
-## Running Tests
+**181 tests** — all passing. Run with:
 
 ```bash
-# Run all tests
 dotnet test --verbosity normal
 
 # Run with coverage
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
-**181 tests** (unit + integration) covering Auth, Patient, Doctor, and Appointment modules — including overlap detection, status transitions, and soft-delete interaction.
+### Service Coverage
 
-## Architecture and Diagrams
+| Service | Line Coverage |
+|---------|:------------:|
+| AppointmentService | 95.2% |
+| AuthService | 99.5% |
+| PatientService | 99.4% |
+| DoctorService | 100% |
 
-Comprehensive UML documentation is maintained in `docs/uml/`, created with PlantUML and a custom dark theme:
+Tests cover all four service modules including edge cases for overlap detection, status transitions, soft-delete interactions, and authentication flows.
 
-- **Sprint 1**: Layered Architecture and CI Pipeline Component Diagram
-- **Sprint 2**: Authentication Sequence, Use Case, and Class Diagrams
-- **Sprint 3**: Patients CRUD Component, Sequence, ERD, and Class Diagrams
-- **Sprint 4**: Doctors CRUD Component, Sequence, ERD, and Class Diagrams
-- **Sprint 5**: Appointments + Business Logic Component, Sequence, ERD, and Class Diagrams
+## Getting Started
 
-SVG exports are available in each sprint's `exports/` subfolder. See `docs/uml/Diagrams-Readme.md` for generation instructions.
+### Prerequisites
+- .NET 10 SDK
+- SQL Server (LocalDB, Express, or full instance)
+
+### Setup
+
+```bash
+# Clone
+git clone https://github.com/Olavenko/clinic-management-api.git
+cd clinic-management-api
+
+# Configure secrets (never committed)
+dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ClinicManagementAPI.Api
+dotnet user-secrets set "Jwt:Key" "your-secret-key-at-least-32-characters" --project ClinicManagementAPI.Api
+
+# Apply migrations
+dotnet ef database update --project ClinicManagementAPI.Core --startup-project ClinicManagementAPI.Api
+
+# Run
+dotnet run --project ClinicManagementAPI.Api
+
+# Open Scalar UI at https://localhost:<port>/scalar/v1
+```
+
+## CI/CD
+
+GitHub Actions runs **build + test** on every push to `main`/`develop` and on pull requests. Dependabot checks NuGet and Actions updates weekly.
+
+## Development Roadmap
+
+- [x] **Sprint 1** — Project Setup, CI Pipeline, Result Pattern, Global Error Handling, Health Check
+- [x] **Sprint 2** — ASP.NET Core Identity, JWT Authentication, Refresh Tokens, Input Validation
+- [x] **Sprint 3** — Patients CRUD, Role-Based Authorization, Assign Role, Search + Pagination
+- [x] **Sprint 4** — Doctors CRUD, Public Endpoints, Admin Write Access, Soft Delete
+- [x] **Sprint 5** — Appointments, Business Logic, Overlap Detection, Status Lifecycle, Filters
+- [x] **Sprint 6** — OpenAPI/Scalar UI, Test Coverage Review, Documentation, Branching Strategy
+
+## Documentation
+
+UML diagrams for each sprint are in `docs/uml/` (PlantUML source + SVG exports). See [`docs/uml/Diagrams-Readme.md`](docs/uml/Diagrams-Readme.md) for details.
 
 ## License
 
