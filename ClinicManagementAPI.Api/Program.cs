@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Threading.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -29,7 +29,8 @@ builder.Services.AddOpenApi(options =>
         document.Info.Description = "A RESTful API for managing clinic appointments, patients, and doctors.";
 
         var components = document.Components ??= new OpenApiComponents();
-        components.SecuritySchemes!["Bearer"] = new OpenApiSecurityScheme
+        components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",

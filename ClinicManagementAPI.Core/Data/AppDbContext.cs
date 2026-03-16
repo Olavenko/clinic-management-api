@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 using ClinicManagementAPI.Core.Models;
@@ -56,17 +56,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 
         modelBuilder.Entity<Appointment>(entity =>
         {
-            // Restrict delete: deleting a patient must not cascade-delete appointments
             entity.HasOne(a => a.Patient)
                   .WithMany()
                   .HasForeignKey(a => a.PatientId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Restrict delete: deleting a doctor must not cascade-delete appointments
             entity.HasOne(a => a.Doctor)
                   .WithMany()
                   .HasForeignKey(a => a.DoctorId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Match the query filters on Doctor and Patient
+            // so EF Core doesn't return appointments for deleted entities
+            entity.HasQueryFilter(a => !a.Patient.IsDeleted && !a.Doctor.IsDeleted);
         });
     }
 }
