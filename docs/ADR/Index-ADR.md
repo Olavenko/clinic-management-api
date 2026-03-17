@@ -22,6 +22,12 @@ Each ADR documents a significant architectural or tooling decision.
 | 0002 | ASP.NET Core Identity Adoption         | Accepted | YYYY-MM-DD | [0002](sprint2/0002-aspnet-identity.md)         |
 | 0003 | Data Annotations over FluentValidation | Accepted | YYYY-MM-DD | [0003](sprint2/0003-data-annotations.md)        |
 
+### Post Sprint 6 — Code Review
+
+| ID   | Title                              | Status   | Date       | File                                                     |
+|------|------------------------------------|----------|------------|----------------------------------------------------------|
+| 0001 | Codebase Review Fixes (13 Issues)  | Accepted | 2026-03-17 | [0001](post-sprint-review/0001-codebase-review-fixes.md) |
+
 ---
 
 ## Status Legend
