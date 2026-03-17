@@ -1,6 +1,7 @@
-using ClinicManagementAPI.Core.DTOs;
+﻿using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Doctors;
 using ClinicManagementAPI.Core.Interfaces;
+using ClinicManagementAPI.Api.Filters;
 
 namespace ClinicManagementAPI.Api.Endpoints;
 
@@ -22,10 +23,12 @@ public static class DoctorEndpoints
 
         // POST /api/doctors — Admin ONLY
         group.MapPost("/", Create)
+            .AddEndpointFilter<ValidationFilter<CreateDoctorRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         // PUT /api/doctors/{id} — Admin ONLY
         group.MapPut("/{id:int}", Update)
+            .AddEndpointFilter<ValidationFilter<UpdateDoctorRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         // DELETE /api/doctors/{id} — Admin ONLY (Soft Delete)

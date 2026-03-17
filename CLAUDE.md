@@ -40,19 +40,16 @@ ClinicManagementAPI.slnx
 
 ## Current State
 
-Sprints 1-3 are complete and merged to main. Next: Sprint 4 (Doctors CRUD).
-
-Completed:
+All 6 sprints are complete. Project is on `develop` branch, pending final PR to `main`.
 
 - Sprint 1: Project setup, CI, Result pattern, GlobalExceptionHandler, Health Check
-- Sprint 2: Identity, JWT, Refresh Token rotation, Roles seeding, Auth endpoints + tests (24 tests)
-- Sprint 3: Patient CRUD, ISoftDeletable, Soft Delete, Global Query Filter, Pagination, Search, Assign Role + tests (70 tests total)
+- Sprint 2: Identity, JWT, Refresh Token rotation, Roles seeding, Auth endpoints + tests
+- Sprint 3: Patient CRUD, ISoftDeletable, Soft Delete, Global Query Filter, Pagination, Search, Assign Role + tests
+- Sprint 4: Doctors CRUD (same pattern as Patients, public GET endpoints) + tests
+- Sprint 5: Appointments + Business Logic (overlap detection, status transitions) + tests
+- Sprint 6: Polish, Scalar UI, README, coverage review, branching strategy
 
-Remaining:
-
-- Sprint 4: Doctors CRUD (same pattern as Patients, public GET endpoints)
-- Sprint 5: Appointments + Business Logic (overlap detection, status transitions)
-- Sprint 6: Polish, Scalar UI, README, coverage review
+Total: 181 tests (Unit + Integration). Coverage: AppointmentService 95.2%, AuthService 98.1%, PatientService 99.1%, DoctorService 100%.
 
 ## Commands
 
@@ -152,9 +149,9 @@ Each entity has a static class with `MapXxxEndpoints(this WebApplication app)` e
 - File member ordering: private fields → constructor → public methods (interface order) → private helpers
 - Using directive ordering: `System.*` → `Microsoft.*` → `ClinicManagementAPI.*` (blank line between groups, alphabetized within)
 
-## Patterns for New Entities (Sprint 4-5)
+## Patterns for Adding New Entities
 
-When creating Doctor or Appointment, follow the exact same pattern as Patient:
+Follow the same pattern used for Patient, Doctor, and Appointment:
 
 1. Model in `Core/Models/` (implement ISoftDeletable if soft delete needed)
 2. DTOs in `Core/DTOs/{Entity}/` (Create, Update, Response)

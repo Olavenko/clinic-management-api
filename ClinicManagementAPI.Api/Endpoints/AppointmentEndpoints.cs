@@ -1,6 +1,7 @@
-using ClinicManagementAPI.Core.DTOs;
+﻿using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Appointments;
 using ClinicManagementAPI.Core.Interfaces;
+using ClinicManagementAPI.Api.Filters;
 
 namespace ClinicManagementAPI.Api.Endpoints;
 
@@ -29,14 +30,17 @@ public static class AppointmentEndpoints
 
         // POST /api/appointments — Admin + Receptionist
         group.MapPost("/", Create)
+            .AddEndpointFilter<ValidationFilter<CreateAppointmentRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Receptionist"));
 
         // PUT /api/appointments/{id} — Admin + Receptionist
         group.MapPut("/{id:int}", Update)
+            .AddEndpointFilter<ValidationFilter<UpdateAppointmentRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Receptionist"));
 
         // PATCH /api/appointments/{id}/status — Admin + Receptionist
         group.MapPatch("/{id:int}/status", UpdateStatus)
+            .AddEndpointFilter<ValidationFilter<UpdateAppointmentStatusRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Receptionist"));
 
         // DELETE /api/appointments/{id} — Admin ONLY

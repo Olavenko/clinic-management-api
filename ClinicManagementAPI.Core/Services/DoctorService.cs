@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
@@ -13,39 +13,26 @@ public class DoctorService(AppDbContext context) : IDoctorService
     public async Task<Result<PagedResponse<DoctorResponse>>> GetAllAsync(
         PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        if (pagination.Page < 1) pagination.Page = 1;
-        if (pagination.PageSize < 1) pagination.PageSize = 10;
-
         IQueryable<Doctor> query = context.Doctors;
 
         if (!string.IsNullOrWhiteSpace(pagination.SearchTerm))
         {
-            string searchTerm = pagination.SearchTerm.Trim();
+            string searchTerm = pagination.SearchTerm.Trim().ToLower();
+
             query = query.Where(d =>
-                d.FullName.Contains(searchTerm) ||
-                d.Specialization.Contains(searchTerm));
+                d.FullName.ToLower().Contains(searchTerm) ||
+                d.Specialization.ToLower().Contains(searchTerm));
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
 
-        List<DoctorResponse> doctors = await query
+        List<DoctorResponse> doctors = (await query
             .OrderBy(d => d.FullName)
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .Select(d => new DoctorResponse
-            {
-                Id = d.Id,
-                FullName = d.FullName,
-                Email = d.Email,
-                Phone = d.Phone,
-                Specialization = d.Specialization,
-                YearsOfExperience = d.YearsOfExperience,
-                Bio = d.Bio,
-                IsAvailable = d.IsAvailable,
-                CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
-            })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Select(d => d.ToResponse())
+            .ToList();
 
         var response = new PagedResponse<DoctorResponse>
         {
@@ -61,39 +48,26 @@ public class DoctorService(AppDbContext context) : IDoctorService
     public async Task<Result<PagedResponse<DoctorResponse>>> GetAvailableAsync(
         PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        if (pagination.Page < 1) pagination.Page = 1;
-        if (pagination.PageSize < 1) pagination.PageSize = 10;
-
         IQueryable<Doctor> query = context.Doctors.Where(d => d.IsAvailable);
 
         if (!string.IsNullOrWhiteSpace(pagination.SearchTerm))
         {
-            string searchTerm = pagination.SearchTerm.Trim();
+            string searchTerm = pagination.SearchTerm.Trim().ToLower();
+
             query = query.Where(d =>
-                d.FullName.Contains(searchTerm) ||
-                d.Specialization.Contains(searchTerm));
+                d.FullName.ToLower().Contains(searchTerm) ||
+                d.Specialization.ToLower().Contains(searchTerm));
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
 
-        List<DoctorResponse> doctors = await query
+        List<DoctorResponse> doctors = (await query
             .OrderBy(d => d.FullName)
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .Select(d => new DoctorResponse
-            {
-                Id = d.Id,
-                FullName = d.FullName,
-                Email = d.Email,
-                Phone = d.Phone,
-                Specialization = d.Specialization,
-                YearsOfExperience = d.YearsOfExperience,
-                Bio = d.Bio,
-                IsAvailable = d.IsAvailable,
-                CreatedAt = d.CreatedAt,
-                UpdatedAt = d.UpdatedAt
-            })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Select(d => d.ToResponse())
+            .ToList();
 
         var response = new PagedResponse<DoctorResponse>
         {
@@ -113,24 +87,9 @@ public class DoctorService(AppDbContext context) : IDoctorService
         Doctor? doctor = await context.Doctors
            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
-        if (doctor is null)
-            return Result<DoctorResponse>.Failure("Doctor not found", 404);
-
-        var response = new DoctorResponse
-        {
-            Id = doctor.Id,
-            FullName = doctor.FullName,
-            Email = doctor.Email,
-            Phone = doctor.Phone,
-            Specialization = doctor.Specialization,
-            YearsOfExperience = doctor.YearsOfExperience,
-            Bio = doctor.Bio,
-            IsAvailable = doctor.IsAvailable,
-            CreatedAt = doctor.CreatedAt,
-            UpdatedAt = doctor.UpdatedAt
-        };
-
-        return Result<DoctorResponse>.Success(response);
+        return doctor is null
+            ? Result<DoctorResponse>.Failure("Doctor not found", 404)
+            : Result<DoctorResponse>.Success(doctor.ToResponse());
     }
 
     public async Task<Result<DoctorResponse>> CreateAsync(
@@ -157,23 +116,17 @@ public class DoctorService(AppDbContext context) : IDoctorService
         };
 
         context.Doctors.Add(doctor);
-        await context.SaveChangesAsync(cancellationToken);
 
-        var response = new DoctorResponse
+        try
         {
-            Id = doctor.Id,
-            FullName = doctor.FullName,
-            Email = doctor.Email,
-            Phone = doctor.Phone,
-            Specialization = doctor.Specialization,
-            YearsOfExperience = doctor.YearsOfExperience,
-            Bio = doctor.Bio,
-            IsAvailable = doctor.IsAvailable,
-            CreatedAt = doctor.CreatedAt,
-            UpdatedAt = doctor.UpdatedAt
-        };
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Result<DoctorResponse>.Failure("Email already registered", 400);
+        }
 
-        return Result<DoctorResponse>.Success(response);
+        return Result<DoctorResponse>.Success(doctor.ToResponse());
     }
 
     public async Task<Result<DoctorResponse>> UpdateAsync(
@@ -217,23 +170,16 @@ public class DoctorService(AppDbContext context) : IDoctorService
 
         doctor.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
-
-        var response = new DoctorResponse
+        try
         {
-            Id = doctor.Id,
-            FullName = doctor.FullName,
-            Email = doctor.Email,
-            Phone = doctor.Phone,
-            Specialization = doctor.Specialization,
-            YearsOfExperience = doctor.YearsOfExperience,
-            Bio = doctor.Bio,
-            IsAvailable = doctor.IsAvailable,
-            CreatedAt = doctor.CreatedAt,
-            UpdatedAt = doctor.UpdatedAt
-        };
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Result<DoctorResponse>.Failure("Email already registered", 400);
+        }
 
-        return Result<DoctorResponse>.Success(response);
+        return Result<DoctorResponse>.Success(doctor.ToResponse());
     }
 
     public async Task<Result<bool>> DeleteAsync(

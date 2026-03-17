@@ -1,7 +1,7 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <MicrosoftExtensionsVersion>10.0.3</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>10.0.5</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <ItemGroup Label="For EF Core.">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(MicrosoftExtensionsVersion)" />
@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup Label="For web services.">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.8" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.10" />
   </ItemGroup>
   <ItemGroup Label="For health checks.">
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="$(MicrosoftExtensionsVersion)" />
@@ -25,6 +25,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="coverlet.collector" Version="8.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.1" />
   </ItemGroup>
 </Project>

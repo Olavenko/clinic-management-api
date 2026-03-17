@@ -40,6 +40,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase($"InMemoryDbForTesting_{Guid.NewGuid()}")
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
             services.AddSingleton(options);

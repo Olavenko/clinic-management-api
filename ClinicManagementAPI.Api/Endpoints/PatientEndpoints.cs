@@ -1,6 +1,7 @@
-using ClinicManagementAPI.Core.DTOs;
+﻿using ClinicManagementAPI.Core.DTOs;
 using ClinicManagementAPI.Core.DTOs.Patients;
 using ClinicManagementAPI.Core.Interfaces;
+using ClinicManagementAPI.Api.Filters;
 
 namespace ClinicManagementAPI.Api.Endpoints;
 
@@ -9,8 +10,7 @@ public static class PatientEndpoints
     public static void MapPatientEndpoints(this WebApplication app)
     {
         RouteGroupBuilder group = app.MapGroup("/api/patients")
-            .WithTags("Patients")
-            .RequireAuthorization();
+            .WithTags("Patients");
 
         // GET /api/patients — Admin + Receptionist
         group.MapGet("/", GetAll)
@@ -22,10 +22,12 @@ public static class PatientEndpoints
 
         // POST /api/patients — Admin + Receptionist
         group.MapPost("/", Create)
+            .AddEndpointFilter<ValidationFilter<CreatePatientRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Receptionist"));
 
         // PUT /api/patients/{id} — Admin + Receptionist
         group.MapPut("/{id:int}", Update)
+            .AddEndpointFilter<ValidationFilter<UpdatePatientRequest>>()
             .RequireAuthorization(policy => policy.RequireRole("Admin", "Receptionist"));
 
         // DELETE /api/patients/{id} — Admin ONLY

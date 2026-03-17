@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -42,15 +42,16 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
 
         await userManager.AddToRoleAsync(user, AppRoles.Patient);
 
-        var accessToken = await GenerateJwtToken(user);
+        var utcNow = DateTime.UtcNow;
+        var accessToken = await GenerateJwtToken(user, utcNow);
         var refreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             Token = refreshToken,
             UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
-            CreatedAt = DateTime.UtcNow
+            ExpiresAt = utcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = utcNow
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -59,7 +60,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+            ExpiresAt = utcNow.AddMinutes(jwtSettings.ExpiryMinutes)
         });
     }
 
@@ -78,15 +79,16 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             return Result<AuthResponse>.Failure("Invalid credentials", 401);
         }
 
-        var accessToken = await GenerateJwtToken(user);
+        var utcNow = DateTime.UtcNow;
+        var accessToken = await GenerateJwtToken(user, utcNow);
         var refreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             Token = refreshToken,
             UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
-            CreatedAt = DateTime.UtcNow
+            ExpiresAt = utcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = utcNow
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -95,7 +97,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+            ExpiresAt = utcNow.AddMinutes(jwtSettings.ExpiryMinutes)
         });
     }
 
@@ -132,15 +134,19 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
 
         var user = await userManager.FindByIdAsync(storedToken.UserId);
 
-        var newAccessToken = await GenerateJwtToken(user!);
+        if (user is null)
+            return Result<AuthResponse>.Failure("User not found", 404);
+
+        var utcNow = DateTime.UtcNow;
+        var newAccessToken = await GenerateJwtToken(user, utcNow);
         var newRefreshToken = GenerateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             Token = newRefreshToken,
             UserId = storedToken.UserId,
-            ExpiresAt = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
-            CreatedAt = DateTime.UtcNow
+            ExpiresAt = utcNow.AddDays(jwtSettings.RefreshTokenExpiryDays),
+            CreatedAt = utcNow
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -149,7 +155,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         {
             AccessToken = newAccessToken,
             RefreshToken = newRefreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes)
+            ExpiresAt = utcNow.AddMinutes(jwtSettings.ExpiryMinutes)
         });
     }
 
@@ -179,6 +185,8 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         if (user is null)
             return Result<bool>.Failure("User not found", 404);
 
+        // Doctor role is seeded but excluded from assignment — doctors are
+        // managed through the Doctors CRUD endpoints, not through user roles
         string[] validRoles = [AppRoles.Admin, AppRoles.Receptionist, AppRoles.Patient];
 
         if (!validRoles.Contains(request.Role))
@@ -223,7 +231,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         }
     }
 
-    private async Task<string> GenerateJwtToken(ApplicationUser user)
+    private async Task<string> GenerateJwtToken(ApplicationUser user, DateTime utcNow)
     {
         var claims = new List<Claim>
         {
@@ -247,7 +255,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
             issuer: jwtSettings.Issuer,
             audience: jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes),
+            expires: utcNow.AddMinutes(jwtSettings.ExpiryMinutes),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

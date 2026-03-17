@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
@@ -13,8 +13,6 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
     public async Task<Result<PagedResponse<AppointmentResponse>>> GetAllAsync(
         AppointmentFilterRequest filter, CancellationToken cancellationToken = default)
     {
-        if (filter.Page < 1) filter.Page = 1;
-        if (filter.PageSize < 1) filter.PageSize = 10;
 
         IQueryable<Appointment> query = context.Appointments
             .Include(a => a.Patient)
@@ -22,10 +20,11 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
         {
-            string searchTerm = filter.SearchTerm.Trim();
+            string searchTerm = filter.SearchTerm.Trim().ToLower();
+
             query = query.Where(a =>
-                a.Patient.FullName.Contains(searchTerm) ||
-                a.Doctor.FullName.Contains(searchTerm));
+                a.Patient.FullName.ToLower().Contains(searchTerm) ||
+                a.Doctor.FullName.ToLower().Contains(searchTerm));
         }
 
         if (filter.DateFrom is not null)
@@ -48,7 +47,7 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         var response = new PagedResponse<AppointmentResponse>
         {
-            Items = appointments.Select(MapToResponse),
+            Items = appointments.Select(a => a.ToResponse()),
             TotalCount = totalCount,
             Page = filter.Page,
             PageSize = filter.PageSize
@@ -60,8 +59,6 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
     public async Task<Result<PagedResponse<AppointmentResponse>>> GetByPatientAsync(
         int patientId, PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        if (pagination.Page < 1) pagination.Page = 1;
-        if (pagination.PageSize < 1) pagination.PageSize = 10;
 
         // Global Query Filter ensures soft-deleted patients return null
         Patient? patient = await context.Patients
@@ -86,7 +83,7 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         var response = new PagedResponse<AppointmentResponse>
         {
-            Items = appointments.Select(MapToResponse),
+            Items = appointments.Select(a => a.ToResponse()),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize
@@ -98,9 +95,6 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
     public async Task<Result<PagedResponse<AppointmentResponse>>> GetByDoctorAsync(
         int doctorId, PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        if (pagination.Page < 1) pagination.Page = 1;
-        if (pagination.PageSize < 1) pagination.PageSize = 10;
-
         // Global Query Filter ensures soft-deleted doctors return null
         Doctor? doctor = await context.Doctors
             .FirstOrDefaultAsync(d => d.Id == doctorId, cancellationToken);
@@ -124,7 +118,7 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         var response = new PagedResponse<AppointmentResponse>
         {
-            Items = appointments.Select(MapToResponse),
+            Items = appointments.Select(a => a.ToResponse()),
             TotalCount = totalCount,
             Page = pagination.Page,
             PageSize = pagination.PageSize
@@ -141,16 +135,15 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
             .Include(a => a.Doctor)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
-        if (appointment is null)
-            return Result<AppointmentResponse>.Failure("Appointment not found", 404);
-
-        return Result<AppointmentResponse>.Success(MapToResponse(appointment));
+        return appointment is null
+            ? Result<AppointmentResponse>.Failure("Appointment not found", 404)
+            : Result<AppointmentResponse>.Success(appointment.ToResponse());
     }
 
     public async Task<Result<AppointmentResponse>> CreateAsync(
-        CreateAppointmentRequest request, CancellationToken cancellationToken = default)
+    CreateAppointmentRequest request, CancellationToken cancellationToken = default)
     {
-        // Rule 1 — Patient must exist (Global Query Filter excludes soft-deleted)
+        // Rule 1 — Patient must exist
         Patient? patient = await context.Patients
             .FirstOrDefaultAsync(p => p.Id == request.PatientId, cancellationToken);
 
@@ -171,56 +164,79 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (request.AppointmentDate < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
 
-        // Overlap detection values
-        TimeOnly newStart = request.AppointmentTime;
-        TimeOnly newEnd = request.AppointmentTime.AddMinutes(request.DurationMinutes);
+        // Serializable transaction: overlap check + save are atomic
+        // Prevents two concurrent requests from booking the same slot
+        using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
 
-        // Rule 4 — Patient has no overlapping appointment
-        bool patientConflict = await context.Appointments
-            .Where(a => a.PatientId == request.PatientId
-                && a.AppointmentDate == request.AppointmentDate
-                && a.Status == AppointmentStatus.Scheduled)
-            .AnyAsync(a =>
-                a.AppointmentTime < newEnd
-                && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
-                cancellationToken);
-
-        if (patientConflict)
-            return Result<AppointmentResponse>.Failure("Patient already has an appointment at this time", 400);
-
-        // Rule 5 — Doctor has no overlapping appointment
-        bool doctorConflict = await context.Appointments
-            .Where(a => a.DoctorId == request.DoctorId
-                && a.AppointmentDate == request.AppointmentDate
-                && a.Status == AppointmentStatus.Scheduled)
-            .AnyAsync(a =>
-                a.AppointmentTime < newEnd
-                && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
-                cancellationToken);
-
-        if (doctorConflict)
-            return Result<AppointmentResponse>.Failure("Doctor already has an appointment at this time", 400);
-
-        var appointment = new Appointment
+        try
         {
-            PatientId = request.PatientId,
-            DoctorId = request.DoctorId,
-            AppointmentDate = request.AppointmentDate,
-            AppointmentTime = request.AppointmentTime,
-            DurationMinutes = request.DurationMinutes,
-            Notes = request.Notes,
-            Status = AppointmentStatus.Scheduled,
-            CreatedAt = DateTime.UtcNow
-        };
+            // Overlap detection values
+            TimeOnly newStart = request.AppointmentTime;
+            TimeOnly newEnd = request.AppointmentTime.AddMinutes(request.DurationMinutes);
 
-        context.Appointments.Add(appointment);
-        await context.SaveChangesAsync(cancellationToken);
+            // Rule 4 — Patient overlap check
+            bool patientConflict = await context.Appointments
+                .Where(a => a.PatientId == request.PatientId
+                    && a.AppointmentDate == request.AppointmentDate
+                    && a.Status == AppointmentStatus.Scheduled)
+                .AnyAsync(a =>
+                    a.AppointmentTime < newEnd
+                    && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
+                    cancellationToken);
 
-        // Load navigation properties for response
-        appointment.Patient = patient;
-        appointment.Doctor = doctor;
+            if (patientConflict)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Result<AppointmentResponse>.Failure(
+                    "Patient already has an appointment at this time", 400);
+            }
 
-        return Result<AppointmentResponse>.Success(MapToResponse(appointment));
+            // Rule 5 — Doctor overlap check
+            bool doctorConflict = await context.Appointments
+                .Where(a => a.DoctorId == request.DoctorId
+                    && a.AppointmentDate == request.AppointmentDate
+                    && a.Status == AppointmentStatus.Scheduled)
+                .AnyAsync(a =>
+                    a.AppointmentTime < newEnd
+                    && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
+                    cancellationToken);
+
+            if (doctorConflict)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Result<AppointmentResponse>.Failure(
+                    "Doctor already has an appointment at this time", 400);
+            }
+
+            var appointment = new Appointment
+            {
+                PatientId = request.PatientId,
+                DoctorId = request.DoctorId,
+                AppointmentDate = request.AppointmentDate,
+                AppointmentTime = request.AppointmentTime,
+                DurationMinutes = request.DurationMinutes,
+                Notes = request.Notes,
+                Status = AppointmentStatus.Scheduled,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Appointments.Add(appointment);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            // Load navigation properties for response
+            appointment.Patient = patient;
+            appointment.Doctor = doctor;
+
+            return Result<AppointmentResponse>.Success(appointment.ToResponse());
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return Result<AppointmentResponse>.Failure(
+                "Appointment conflict detected, please try again", 409);
+        }
     }
 
     public async Task<Result<AppointmentResponse>> UpdateAsync(
@@ -248,66 +264,92 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (appointment.Status != AppointmentStatus.Scheduled)
             return Result<AppointmentResponse>.Failure("Only scheduled appointments can be updated", 400);
 
+        // Rule 3.5 — Doctor must still be available for rescheduling
+        if (!appointment.Doctor.IsAvailable)
+            return Result<AppointmentResponse>.Failure("Doctor is not available", 400);
+
         // Rule 4 — New date cannot be in the past (only if date is being changed)
         if (request.AppointmentDate is not null
             && request.AppointmentDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
 
-        // Determine final values for conflict check
-        DateOnly finalDate = request.AppointmentDate ?? appointment.AppointmentDate;
-        TimeOnly finalTime = request.AppointmentTime ?? appointment.AppointmentTime;
-        int finalDuration = request.DurationMinutes ?? appointment.DurationMinutes;
+        // Serializable transaction: overlap check + save are atomic
+        using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
 
-        // Rule 5 — Check overlapping only if date, time, or duration changed
-        bool scheduleChanged = request.AppointmentDate is not null
-            || request.AppointmentTime is not null
-            || request.DurationMinutes is not null;
-
-        if (scheduleChanged)
+        try
         {
-            TimeOnly newStart = finalTime;
-            TimeOnly newEnd = finalTime.AddMinutes(finalDuration);
+            // Determine final values for conflict check
+            DateOnly finalDate = request.AppointmentDate ?? appointment.AppointmentDate;
+            TimeOnly finalTime = request.AppointmentTime ?? appointment.AppointmentTime;
+            int finalDuration = request.DurationMinutes ?? appointment.DurationMinutes;
 
-            // Patient conflict (exclude current appointment)
-            bool patientConflict = await context.Appointments
-                .Where(a => a.Id != id
-                    && a.PatientId == appointment.PatientId
-                    && a.AppointmentDate == finalDate
-                    && a.Status == AppointmentStatus.Scheduled)
-                .AnyAsync(a =>
-                    a.AppointmentTime < newEnd
-                    && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
-                    cancellationToken);
+            // Rule 5 — Check overlapping only if date, time, or duration changed
+            bool scheduleChanged = request.AppointmentDate is not null
+                || request.AppointmentTime is not null
+                || request.DurationMinutes is not null;
 
-            if (patientConflict)
-                return Result<AppointmentResponse>.Failure("Patient already has an appointment at this time", 400);
+            if (scheduleChanged)
+            {
+                TimeOnly newStart = finalTime;
+                TimeOnly newEnd = finalTime.AddMinutes(finalDuration);
 
-            // Doctor conflict (exclude current appointment)
-            bool doctorConflict = await context.Appointments
-                .Where(a => a.Id != id
-                    && a.DoctorId == appointment.DoctorId
-                    && a.AppointmentDate == finalDate
-                    && a.Status == AppointmentStatus.Scheduled)
-                .AnyAsync(a =>
-                    a.AppointmentTime < newEnd
-                    && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
-                    cancellationToken);
+                // Patient conflict (exclude current appointment)
+                bool patientConflict = await context.Appointments
+                    .Where(a => a.Id != id
+                        && a.PatientId == appointment.PatientId
+                        && a.AppointmentDate == finalDate
+                        && a.Status == AppointmentStatus.Scheduled)
+                    .AnyAsync(a =>
+                        a.AppointmentTime < newEnd
+                        && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
+                        cancellationToken);
 
-            if (doctorConflict)
-                return Result<AppointmentResponse>.Failure("Doctor already has an appointment at this time", 400);
+                if (patientConflict)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Result<AppointmentResponse>.Failure(
+                        "Patient already has an appointment at this time", 400);
+                }
+
+                // Doctor conflict (exclude current appointment)
+                bool doctorConflict = await context.Appointments
+                    .Where(a => a.Id != id
+                        && a.DoctorId == appointment.DoctorId
+                        && a.AppointmentDate == finalDate
+                        && a.Status == AppointmentStatus.Scheduled)
+                    .AnyAsync(a =>
+                        a.AppointmentTime < newEnd
+                        && newStart < a.AppointmentTime.AddMinutes(a.DurationMinutes),
+                        cancellationToken);
+
+                if (doctorConflict)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Result<AppointmentResponse>.Failure(
+                        "Doctor already has an appointment at this time", 400);
+                }
+            }
+
+            // Apply updates (inside transaction — atomic with overlap check)
+            if (request.AppointmentDate is not null) appointment.AppointmentDate = request.AppointmentDate.Value;
+            if (request.AppointmentTime is not null) appointment.AppointmentTime = request.AppointmentTime.Value;
+            if (request.DurationMinutes is not null) appointment.DurationMinutes = request.DurationMinutes.Value;
+            if (request.Notes is not null) appointment.Notes = request.Notes;
+
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Result<AppointmentResponse>.Success(appointment.ToResponse());
         }
-
-        // Apply updates
-        if (request.AppointmentDate is not null) appointment.AppointmentDate = request.AppointmentDate.Value;
-        if (request.AppointmentTime is not null) appointment.AppointmentTime = request.AppointmentTime.Value;
-        if (request.DurationMinutes is not null) appointment.DurationMinutes = request.DurationMinutes.Value;
-        if (request.Notes is not null) appointment.Notes = request.Notes;
-
-        appointment.UpdatedAt = DateTime.UtcNow;
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        return Result<AppointmentResponse>.Success(MapToResponse(appointment));
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return Result<AppointmentResponse>.Failure(
+                "Appointment conflict detected, please try again", 409);
+        }
     }
 
     public async Task<Result<AppointmentResponse>> UpdateStatusAsync(
@@ -338,7 +380,7 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return Result<AppointmentResponse>.Success(MapToResponse(appointment));
+        return Result<AppointmentResponse>.Success(appointment.ToResponse());
     }
 
     public async Task<Result<bool>> DeleteAsync(
@@ -361,23 +403,4 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
 
         return Result<bool>.Success(true);
     }
-
-    // ── Private Helpers ──────────────────────────────────────────────
-
-    private static AppointmentResponse MapToResponse(Appointment appointment) => new()
-    {
-        Id = appointment.Id,
-        PatientId = appointment.PatientId,
-        PatientName = appointment.Patient?.FullName ?? "Deleted Patient",
-        DoctorId = appointment.DoctorId,
-        DoctorName = appointment.Doctor?.FullName ?? "Deleted Doctor",
-        DoctorSpecialization = appointment.Doctor?.Specialization ?? "Unknown",
-        AppointmentDate = appointment.AppointmentDate,
-        AppointmentTime = appointment.AppointmentTime,
-        DurationMinutes = appointment.DurationMinutes,
-        Status = appointment.Status.ToString(),
-        Notes = appointment.Notes,
-        CreatedAt = appointment.CreatedAt,
-        UpdatedAt = appointment.UpdatedAt
-    };
 }
