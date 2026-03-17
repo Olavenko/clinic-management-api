@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 using ClinicManagementAPI.Core.Data;
 using ClinicManagementAPI.Core.DTOs;
@@ -13,19 +13,17 @@ public class PatientService(AppDbContext context) : IPatientService
     public async Task<Result<PagedResponse<PatientResponse>>> GetAllAsync(
         PaginationRequest pagination, CancellationToken cancellationToken = default)
     {
-        if (pagination.Page < 1) pagination.Page = 1;
-        if (pagination.PageSize < 1) pagination.PageSize = 10;
 
         IQueryable<Patient> query = context.Patients;
 
         if (!string.IsNullOrEmpty(pagination.SearchTerm))
         {
-            string searchTerm = pagination.SearchTerm.Trim();
+            string searchTerm = pagination.SearchTerm.Trim().ToLower();
 
             query = query.Where(p =>
-                p.FullName.Contains(searchTerm) ||
-                p.Email.Contains(searchTerm) ||
-                p.Phone.Contains(searchTerm));
+                p.FullName.ToLower().Contains(searchTerm) ||
+                p.Email.ToLower().Contains(searchTerm) ||
+                p.Phone.ToLower().Contains(searchTerm));
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
@@ -36,9 +34,7 @@ public class PatientService(AppDbContext context) : IPatientService
             .Take(pagination.PageSize)
             .ToListAsync(cancellationToken);
 
-        List<PatientResponse> patients = patientEntities
-            .Select(MapToResponse)
-            .ToList();
+        List<PatientResponse> patients = patientEntities.Select(p => p.ToResponse()).ToList();
 
         var response = new PagedResponse<PatientResponse>
         {
@@ -58,12 +54,9 @@ public class PatientService(AppDbContext context) : IPatientService
         Patient? patient = await context.Patients
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-        if (patient is null)
-            return Result<PatientResponse>.Failure("Patient not found", 404);
-
-        var response = MapToResponse(patient);
-
-        return Result<PatientResponse>.Success(response);
+        return patient is null
+            ? Result<PatientResponse>.Failure("Patient not found", 404)
+            : Result<PatientResponse>.Success(patient.ToResponse());
     }
 
     public async Task<Result<PatientResponse>> CreateAsync(
@@ -89,11 +82,17 @@ public class PatientService(AppDbContext context) : IPatientService
         };
 
         context.Patients.Add(patient);
-        await context.SaveChangesAsync(cancellationToken);
 
-        var response = MapToResponse(patient);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Result<PatientResponse>.Failure("Email already registered", 400);
+        }
 
-        return Result<PatientResponse>.Success(response);
+        return Result<PatientResponse>.Success(patient.ToResponse());
     }
 
     public async Task<Result<PatientResponse>> UpdateAsync(
@@ -136,11 +135,16 @@ public class PatientService(AppDbContext context) : IPatientService
 
         patient.UpdatedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Result<PatientResponse>.Failure("Email already registered", 400);
+        }
 
-        var response = MapToResponse(patient);
-
-        return Result<PatientResponse>.Success(response);
+        return Result<PatientResponse>.Success(patient.ToResponse());
     }
 
     public async Task<Result<bool>> DeleteAsync(
@@ -159,17 +163,4 @@ public class PatientService(AppDbContext context) : IPatientService
 
         return Result<bool>.Success(true);
     }
-
-    private static PatientResponse MapToResponse(Patient patient) => new()
-    {
-        Id = patient.Id,
-        FullName = patient.FullName,
-        Email = patient.Email,
-        Phone = patient.Phone,
-        DateOfBirth = patient.DateOfBirth,
-        Gender = patient.Gender.ToString(),
-        Address = patient.Address,
-        CreatedAt = patient.CreatedAt,
-        UpdatedAt = patient.UpdatedAt
-    };
 }

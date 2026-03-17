@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Threading.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -78,6 +78,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors();
+
 // --- Rate Limiting (auth endpoints) ---
 builder.Services.AddRateLimiter(options =>
 {
@@ -123,6 +125,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// CORS — AllowAll for development/portfolio. In production, restrict origins.
+app.UseCors(policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // Must be before endpoint routing — order matters for auth pipeline
 app.UseAuthentication();
