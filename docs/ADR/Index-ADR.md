@@ -29,6 +29,12 @@ Each ADR documents a significant architectural or tooling decision.
 | 0001 | Codebase Review Fixes (13 Issues)       | Accepted | 2026-03-17 | [0001](post-sprint-review/0001-codebase-review-fixes.md)       |
 | 0002 | Post-Sprint Codebase Review (22 Issues) | Accepted | 2026-03-18 | [0002](post-sprint-review/0002-post-sprint-codebase-review.md) |
 
+### Post Sprint 6 — Code Review
+
+| ID   | Title                              | Status   | Date       | File                                                     |
+|------|------------------------------------|----------|------------|----------------------------------------------------------|
+| 0001 | Codebase Review Fixes (13 Issues)  | Accepted | 2026-03-17 | [0001](post-sprint-review/0001-codebase-review-fixes.md) |
+
 ---
 
 ## Status Legend

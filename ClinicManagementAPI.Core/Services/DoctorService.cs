@@ -123,7 +123,6 @@ public class DoctorService(AppDbContext context) : IDoctorService
         }
         catch (DbUpdateException)
         {
-            context.Entry(doctor).State = EntityState.Detached;
             return Result<DoctorResponse>.Failure("Email already registered", 400);
         }
 
