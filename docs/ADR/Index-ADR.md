@@ -1,4 +1,4 @@
-# ADR Index — Clinic Management API
+﻿# ADR Index — Clinic Management API
 
 This directory contains Architecture Decision Records (ADRs) for the project.
 Each ADR documents a significant architectural or tooling decision.
@@ -7,30 +7,31 @@ Each ADR documents a significant architectural or tooling decision.
 
 ### Sprint 1 — Project Setup & Foundation
 
-| ID   | Title                              | Status   | Date       | File                                              |
-|------|------------------------------------|----------|------------|----------------------------------------------------|
-| 0001 | Result Pattern Adoption            | Accepted | YYYY-MM-DD | [0001](sprint1/0001-result-pattern.md)             |
-| 0002 | Layered Architecture (3-Project)   | Accepted | YYYY-MM-DD | [0002](sprint1/0002-layered-architecture.md)       |
-| 0003 | Manual Mapping over AutoMapper     | Accepted | YYYY-MM-DD | [0003](sprint1/0003-manual-mapping.md)             |
-| 0004 | Central Package Management         | Accepted | YYYY-MM-DD | [0004](sprint1/0004-central-package-management.md) |
+| ID   | Title                                            | Status   | Date       | File                                                     |
+|------|--------------------------------------------------|----------|------------|----------------------------------------------------------|
+| 0001 | Layered Architecture (3-Project)                 | Accepted | 2026-03-10 | [0001](sprint1/0001-layered-architecture.md)             |
+| 0002 | Custom Result\<T\> Pattern                       | Accepted | 2026-03-10 | [0002](sprint1/0002-custom-result-pattern.md)            |
+| 0003 | Two-Layer Error Handling Strategy                | Accepted | 2026-03-10 | [0003](sprint1/0003-two-layer-error-handling.md)         |
+| 0004 | Minimal API over Controllers                     | Accepted | 2026-03-11 | [0004](sprint1/0004-minimal-api-over-controllers.md)     |
+| 0005 | DTOs in Core instead of Api                      | Accepted | 2026-03-11 | [0005](sprint1/0005-dtos-in-core.md)                     |
+| 0006 | Build Configuration Strategy (CPM + Build Props) | Accepted | 2026-03-11 | [0006](sprint1/0006-build-configuration-strategy.md)     |
 
 ### Sprint 2 — Authentication
 
 | ID   | Title                                  | Status   | Date       | File                                            |
 |------|----------------------------------------|----------|------------|-------------------------------------------------|
-| 0001 | JWT + Refresh Token Strategy           | Accepted | YYYY-MM-DD | [0001](sprint2/0001-jwt-refresh-token.md)       |
-| 0002 | ASP.NET Core Identity Adoption         | Accepted | YYYY-MM-DD | [0002](sprint2/0002-aspnet-identity.md)         |
-| 0003 | Data Annotations over FluentValidation | Accepted | YYYY-MM-DD | [0003](sprint2/0003-data-annotations.md)        |
+| 0001 |                                        | Accepted | YYYY-MM-DD |                                                 |
 
 ### Post Sprint 6 — Code Review
 
 | ID   | Title                              | Status   | Date       | File                                                     |
 |------|------------------------------------|----------|------------|----------------------------------------------------------|
-| 0001 | Codebase Review Fixes (13 Issues)  | Accepted | 2026-03-17 | [0001](post-sprint-review/0001-codebase-review-fixes.md) |
+| 0001 | Codebase Review Fixes (13 Issues)  | Accepted | 2026-03-18 | [0001](post-sprint-review/0001-codebase-review-fixes.md) |
 
 ---
 
 ## Status Legend
+
 - **Accepted** — Implemented and in use.
 - **Draft** — Created but not yet reviewed.
 - **Deferred** — Postponed to a later sprint.
