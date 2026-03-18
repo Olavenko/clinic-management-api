@@ -1,4 +1,4 @@
-name: CI Build
+﻿name: CI Build
 
 on:
   push:
@@ -24,4 +24,6 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Test with coverage
+        env:
+          Jwt__Key: ${{ secrets.JWT_KEY }}
         run: dotnet test --no-build --collect:"XPlat Code Coverage" --verbosity normal
