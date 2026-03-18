@@ -12,9 +12,11 @@ public class UpdatePatientRequest
     public string? FullName { get; set; }
 
     [EmailAddress]
+    [MaxLength(255)]
     public string? Email { get; set; }
 
     [Phone]
+    [MaxLength(20)]
     public string? Phone { get; set; }
 
     public Gender? Gender { get; set; }
@@ -22,6 +24,6 @@ public class UpdatePatientRequest
     [DataType(DataType.Date)]
     public DateOnly? DateOfBirth { get; set; }
 
-    [MaxLength(250)]
+    [MaxLength(500)]
     public string? Address { get; set; }
 }

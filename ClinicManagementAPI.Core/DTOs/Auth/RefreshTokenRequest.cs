@@ -5,5 +5,6 @@ namespace ClinicManagementAPI.Core.DTOs.Auth;
 public class RefreshTokenRequest
 {
     [Required]
+    [MaxLength(256)]
     public string RefreshToken { get; set; } = string.Empty;
 }

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ClinicManagementAPI.Core.Models;
 
 // Appointment entity — uses Status lifecycle instead of soft delete
@@ -18,6 +20,7 @@ public class Appointment
 
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
 
+    [MaxLength(500)]
     public string? Notes { get; set; }
 
     public DateTime CreatedAt { get; set; }

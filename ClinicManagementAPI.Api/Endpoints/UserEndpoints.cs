@@ -1,3 +1,4 @@
+﻿using ClinicManagementAPI.Api.Filters;
 using ClinicManagementAPI.Core.DTOs.Auth;
 using ClinicManagementAPI.Core.Interfaces;
 
@@ -24,6 +25,7 @@ public static class UserEndpoints
                 ? Results.Ok(new { message = "Role assigned successfully" })
                 : Results.Problem(result.Error!, statusCode: result.StatusCode);
         })
-        .RequireAuthorization(policy => policy.RequireRole("Admin"));
+        .RequireAuthorization(policy => policy.RequireRole("Admin"))
+        .AddEndpointFilter<ValidationFilter<AssignRoleRequest>>();
     }
 }

@@ -228,6 +228,7 @@ public class AuthService(UserManager<ApplicationUser> userManager, JwtSettings j
         if (staleTokens.Count > 0)
         {
             dbContext.RefreshTokens.RemoveRange(staleTokens);
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 

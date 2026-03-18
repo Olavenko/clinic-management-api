@@ -164,6 +164,20 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (request.AppointmentDate < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
 
+        // Rule 3.5 — Same-day appointments must be in the future
+        if (request.AppointmentDate == DateOnly.FromDateTime(DateTime.UtcNow)
+            && request.AppointmentTime <= TimeOnly.FromDateTime(DateTime.UtcNow))
+            return Result<AppointmentResponse>.Failure("Appointment time has already passed", 400);
+
+        // Rule 3.6 — Appointment must not cross midnight (TimeOnly wraps around)
+        int endMinutes = request.AppointmentTime.Hour * 60
+            + request.AppointmentTime.Minute
+            + request.DurationMinutes;
+
+        if (endMinutes > 24 * 60)
+            return Result<AppointmentResponse>.Failure(
+                "Appointment cannot extend past midnight", 400);
+
         // Serializable transaction: overlap check + save are atomic
         // Prevents two concurrent requests from booking the same slot
         using var transaction = await context.Database
@@ -265,6 +279,9 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
             return Result<AppointmentResponse>.Failure("Only scheduled appointments can be updated", 400);
 
         // Rule 3.5 — Doctor must still be available for rescheduling
+        if (appointment.Doctor is null)
+            return Result<AppointmentResponse>.Failure("Doctor no longer exists", 404);
+
         if (!appointment.Doctor.IsAvailable)
             return Result<AppointmentResponse>.Failure("Doctor is not available", 400);
 
@@ -272,6 +289,22 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (request.AppointmentDate is not null
             && request.AppointmentDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
+
+        // Same-day time check (use final values since time might not be changing)
+        DateOnly finalDateForCheck = request.AppointmentDate ?? appointment.AppointmentDate;
+        TimeOnly finalTimeForCheck = request.AppointmentTime ?? appointment.AppointmentTime;
+
+        if (finalDateForCheck == DateOnly.FromDateTime(DateTime.UtcNow)
+            && finalTimeForCheck <= TimeOnly.FromDateTime(DateTime.UtcNow))
+            return Result<AppointmentResponse>.Failure("Appointment time has already passed", 400);
+
+        // Appointment must not cross midnight (TimeOnly wraps around)
+        int checkDuration = request.DurationMinutes ?? appointment.DurationMinutes;
+        int endMinutes = finalTimeForCheck.Hour * 60 + finalTimeForCheck.Minute + checkDuration;
+
+        if (endMinutes > 24 * 60)
+            return Result<AppointmentResponse>.Failure(
+                "Appointment cannot extend past midnight", 400);
 
         // Serializable transaction: overlap check + save are atomic
         using var transaction = await context.Database
@@ -353,34 +386,47 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
     }
 
     public async Task<Result<AppointmentResponse>> UpdateStatusAsync(
-        int id, UpdateAppointmentStatusRequest request, CancellationToken cancellationToken = default)
+    int id, UpdateAppointmentStatusRequest request, CancellationToken cancellationToken = default)
     {
-        // Rule 1 — Appointment must exist
-        Appointment? appointment = await context.Appointments
-            .Include(a => a.Patient)
-            .Include(a => a.Doctor)
-            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        using var transaction = await context.Database
+            .BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
 
-        if (appointment is null)
-            return Result<AppointmentResponse>.Failure("Appointment not found", 404);
+        try
+        {
+            // Rule 1 — Appointment must exist
+            Appointment? appointment = await context.Appointments
+                .Include(a => a.Patient)
+                .Include(a => a.Doctor)
+                .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
-        // Rule 2 — Status transition rules
-        if (appointment.Status == AppointmentStatus.Completed)
-            return Result<AppointmentResponse>.Failure("Completed appointments cannot be changed", 400);
+            if (appointment is null)
+                return Result<AppointmentResponse>.Failure("Appointment not found", 404);
 
-        if (appointment.Status == AppointmentStatus.Cancelled)
-            return Result<AppointmentResponse>.Failure("Cancelled appointments cannot be changed", 400);
+            // Rule 2 — Status transition rules
+            if (appointment.Status == AppointmentStatus.Completed)
+                return Result<AppointmentResponse>.Failure("Completed appointments cannot be changed", 400);
 
-        // Only Scheduled → Completed or Scheduled → Cancelled are valid
-        if (request.Status != AppointmentStatus.Completed && request.Status != AppointmentStatus.Cancelled)
-            return Result<AppointmentResponse>.Failure("Invalid status transition", 400);
+            if (appointment.Status == AppointmentStatus.Cancelled)
+                return Result<AppointmentResponse>.Failure("Cancelled appointments cannot be changed", 400);
 
-        appointment.Status = request.Status;
-        appointment.UpdatedAt = DateTime.UtcNow;
+            // Only Scheduled → Completed or Scheduled → Cancelled are valid
+            if (request.Status != AppointmentStatus.Completed && request.Status != AppointmentStatus.Cancelled)
+                return Result<AppointmentResponse>.Failure("Invalid status transition", 400);
 
-        await context.SaveChangesAsync(cancellationToken);
+            appointment.Status = request.Status;
+            appointment.UpdatedAt = DateTime.UtcNow;
 
-        return Result<AppointmentResponse>.Success(appointment.ToResponse());
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Result<AppointmentResponse>.Success(appointment.ToResponse());
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return Result<AppointmentResponse>.Failure(
+                "Status update conflict detected, please try again", 409);
+        }
     }
 
     public async Task<Result<bool>> DeleteAsync(

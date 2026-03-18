@@ -16,7 +16,7 @@ public class PatientService(AppDbContext context) : IPatientService
 
         IQueryable<Patient> query = context.Patients;
 
-        if (!string.IsNullOrEmpty(pagination.SearchTerm))
+        if (!string.IsNullOrWhiteSpace(pagination.SearchTerm))
         {
             string searchTerm = pagination.SearchTerm.Trim().ToLower();
 
@@ -89,6 +89,7 @@ public class PatientService(AppDbContext context) : IPatientService
         }
         catch (DbUpdateException)
         {
+            context.Entry(patient).State = EntityState.Detached;
             return Result<PatientResponse>.Failure("Email already registered", 400);
         }
 

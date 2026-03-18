@@ -27,6 +27,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 
             entity.HasIndex(rt => rt.Token)
                   .IsUnique();
+
+            // Index for RevokeAllUserTokensAsync and CleanupExpiredTokensAsync queries
+            entity.HasIndex(rt => rt.UserId);
         });
 
         modelBuilder.Entity<Patient>(entity =>

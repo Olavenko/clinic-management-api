@@ -11,10 +11,12 @@ public class CreateDoctorRequest
 
     [Required]
     [EmailAddress]
+    [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
 
     [Required]
     [Phone]
+    [MaxLength(20)]
     public string Phone { get; set; } = string.Empty;
 
     [Required]
@@ -25,5 +27,6 @@ public class CreateDoctorRequest
     [Range(0, 60)]
     public int YearsOfExperience { get; set; }
 
+    [MaxLength(500)]
     public string? Bio { get; set; }
 }

@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Threading.RateLimiting;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -57,6 +57,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 // --- 3. Authentication & Authorization ---
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
     ?? throw new InvalidOperationException("JWT settings not configured");
+
+// Validate JWT Key length at startup — HMAC-SHA256 requires at least 256 bits (32 chars)
+if (string.IsNullOrWhiteSpace(jwtSettings.Key) || jwtSettings.Key.Length < 32)
+    throw new InvalidOperationException(
+        "JWT Key must be at least 32 characters for HMAC-SHA256");
 
 builder.Services.AddSingleton(jwtSettings);
 

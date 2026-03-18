@@ -13,10 +13,12 @@ public class CreatePatientRequest
 
     [Required]
     [EmailAddress]
+    [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
 
     [Required]
     [Phone]
+    [MaxLength(20)]
     public string Phone { get; set; } = string.Empty;
 
     [Required]
@@ -26,6 +28,6 @@ public class CreatePatientRequest
     [DataType(DataType.Date)]
     public DateOnly DateOfBirth { get; set; }
 
-    [MaxLength(250)]
+    [MaxLength(500)]
     public string? Address { get; set; }
 }

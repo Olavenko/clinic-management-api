@@ -8,7 +8,7 @@ Each ADR documents a significant architectural or tooling decision.
 ### Sprint 1 — Project Setup & Foundation
 
 | ID   | Title                                            | Status   | Date       | File                                                     |
-|------|--------------------------------------------------|----------|------------|----------------------------------------------------------|
+| ---- | ------------------------------------------------ | -------- | ---------- | -------------------------------------------------------- |
 | 0001 | Layered Architecture (3-Project)                 | Accepted | 2026-03-10 | [0001](sprint1/0001-layered-architecture.md)             |
 | 0002 | Custom Result\<T\> Pattern                       | Accepted | 2026-03-10 | [0002](sprint1/0002-custom-result-pattern.md)            |
 | 0003 | Two-Layer Error Handling Strategy                | Accepted | 2026-03-10 | [0003](sprint1/0003-two-layer-error-handling.md)         |
@@ -18,15 +18,16 @@ Each ADR documents a significant architectural or tooling decision.
 
 ### Sprint 2 — Authentication
 
-| ID   | Title                                  | Status   | Date       | File                                            |
-|------|----------------------------------------|----------|------------|-------------------------------------------------|
-| 0001 |                                        | Accepted | YYYY-MM-DD |                                                 |
+| ID   | Title                                    | Status   | Date       | File                                               |
+| ---- | ---------------------------------------- | -------- | ---------- | -------------------------------------------------- |
+| 0001 |                                          | Accepted | YYYY-MM-DD |                                                    |
 
 ### Post Sprint 6 — Code Review
 
-| ID   | Title                              | Status   | Date       | File                                                     |
-|------|------------------------------------|----------|------------|----------------------------------------------------------|
-| 0001 | Codebase Review Fixes (13 Issues)  | Accepted | 2026-03-18 | [0001](post-sprint-review/0001-codebase-review-fixes.md) |
+| ID   | Title                                   | Status   | Date       | File                                                           |
+| ---- | --------------------------------------- | -------- | ---------- | -------------------------------------------------------------- |
+| 0001 | Codebase Review Fixes (13 Issues)       | Accepted | 2026-03-17 | [0001](post-sprint-review/0001-codebase-review-fixes.md)       |
+| 0002 | Post-Sprint Codebase Review (22 Issues) | Accepted | 2026-03-18 | [0002](post-sprint-review/0002-post-sprint-codebase-review.md) |
 
 ---
 
