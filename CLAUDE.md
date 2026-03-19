@@ -1,4 +1,4 @@
-﻿# Clinic Management API
+# Clinic Management API
 
 ## Project Identity
 
@@ -18,21 +18,23 @@ A RESTful API for managing clinic appointments, patients, and doctors. Portfolio
 
 ```markdown
 ClinicManagementAPI.slnx
-├── ClinicManagementAPI.Api/          → Web layer (depends on Core)
-│   ├── Endpoints/                    → Static classes with MapXxxEndpoints()
-│   ├── Filters/                      → ValidationFilter<T> (Data Annotations)
-│   ├── Middleware/                    → GlobalExceptionHandler (IExceptionHandler)
-│   └── Program.cs
-├── ClinicManagementAPI.Core/         → Business layer (knows nothing about Web)
-│   ├── Data/                         → AppDbContext, DatabaseSeeder
-│   ├── DTOs/                         → All DTOs live here (Auth/, Patients/, Doctors/, Appointments/)
-│   ├── Interfaces/                   → IAuthService, IPatientService, IDoctorService, IAppointmentService, ISoftDeletable
-│   ├── Models/                       → Entities, enums, Result<T>, JwtSettings, AppRoles, XxxMappings
-│   ├── Services/                     → AuthService, PatientService, DoctorService, AppointmentService
-│   └── Migrations/
-├── ClinicManagementAPI.Tests/
-│   ├── Unit/                         → XxxServiceTests.cs (InMemory DB per test)
-│   └── Integration/                  → XxxEndpointsTests.cs + CustomWebApplicationFactory
+├── src/
+│   ├── ClinicManagementAPI.Api/          → Web layer (depends on Core)
+│   │   ├── Endpoints/                    → Static classes with MapXxxEndpoints()
+│   │   ├── Filters/                      → ValidationFilter<T> (Data Annotations)
+│   │   ├── Middleware/                    → GlobalExceptionHandler (IExceptionHandler)
+│   │   └── Program.cs
+│   └── ClinicManagementAPI.Core/         → Business layer (knows nothing about Web)
+│       ├── Data/                         → AppDbContext, DatabaseSeeder
+│       ├── DTOs/                         → All DTOs live here (Auth/, Patients/, Doctors/, Appointments/)
+│       ├── Interfaces/                   → IAuthService, IPatientService, IDoctorService, IAppointmentService, ISoftDeletable
+│       ├── Models/                       → Entities, enums, Result<T>, JwtSettings, AppRoles, XxxMappings
+│       ├── Services/                     → AuthService, PatientService, DoctorService, AppointmentService
+│       └── Migrations/
+├── tests/
+│   └── ClinicManagementAPI.Tests/
+│       ├── Unit/                         → XxxServiceTests.cs (InMemory DB per test)
+│       └── Integration/                  → XxxEndpointsTests.cs + CustomWebApplicationFactory
 ├── Directory.Build.props             → net10.0, Nullable, TreatWarningsAsErrors, EnforceCodeStyleInBuild
 ├── Directory.Packages.props          → CPM with MicrosoftExtensionsVersion property
 └── Roadmap/                          → Sprint checklists (Sprint-1 through Sprint-6)
@@ -58,7 +60,7 @@ Total: 181 tests (Unit + Integration). Coverage: AppointmentService 95.2%, AuthS
 dotnet build
 
 # Run
-dotnet run --project ClinicManagementAPI.Api
+dotnet run --project src/ClinicManagementAPI.Api
 
 # Test
 dotnet test --verbosity normal
@@ -67,16 +69,16 @@ dotnet test --verbosity normal
 dotnet test --collect:"XPlat Code Coverage"
 
 # Add migration
-dotnet ef migrations add <Name> --project ClinicManagementAPI.Core --startup-project ClinicManagementAPI.Api
+dotnet ef migrations add <Name> --project src/ClinicManagementAPI.Core --startup-project src/ClinicManagementAPI.Api
 
 # Apply migration
-dotnet ef database update --project ClinicManagementAPI.Core --startup-project ClinicManagementAPI.Api
+dotnet ef database update --project src/ClinicManagementAPI.Core --startup-project src/ClinicManagementAPI.Api
 
 # User secrets (connection string)
-dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost\SQLEXPRESS;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ClinicManagementAPI.Api
+dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost\SQLEXPRESS;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project src/ClinicManagementAPI.Api
 
 # User secrets (JWT key)
-dotnet user-secrets set "Jwt:Key" "your-secret-key-min-32-characters" --project ClinicManagementAPI.Api
+dotnet user-secrets set "Jwt:Key" "your-secret-key-min-32-characters" --project src/ClinicManagementAPI.Api
 ```
 
 ## Architecture Decisions — Follow These Strictly

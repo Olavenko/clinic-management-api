@@ -19,9 +19,9 @@ A RESTful API for managing clinic appointments, patients, and doctors — built 
 3-project layered architecture with clear dependency direction:
 
 ```
-ClinicManagementAPI.Api        → Endpoints, Filters, Middleware, Program.cs
-ClinicManagementAPI.Core       → Models, Services, Interfaces, Data, DTOs, Migrations
-ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
+src/ClinicManagementAPI.Api        → Endpoints, Filters, Middleware, Program.cs
+src/ClinicManagementAPI.Core       → Models, Services, Interfaces, Data, DTOs, Migrations
+tests/ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
 ```
 
 `Api → Core ← Tests` — Core has zero dependency on the web layer.
@@ -145,14 +145,14 @@ git clone https://github.com/Olavenko/clinic-management-api.git
 cd clinic-management-api
 
 # Configure secrets (never committed)
-dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project ClinicManagementAPI.Api
-dotnet user-secrets set "Jwt:Key" "your-secret-key-at-least-32-characters" --project ClinicManagementAPI.Api
+dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project src/ClinicManagementAPI.Api
+dotnet user-secrets set "Jwt:Key" "your-secret-key-at-least-32-characters" --project src/ClinicManagementAPI.Api
 
 # Apply migrations
-dotnet ef database update --project ClinicManagementAPI.Core --startup-project ClinicManagementAPI.Api
+dotnet ef database update --project src/ClinicManagementAPI.Core --startup-project src/ClinicManagementAPI.Api
 
 # Run
-dotnet run --project ClinicManagementAPI.Api
+dotnet run --project src/ClinicManagementAPI.Api
 
 # Open Scalar UI at https://localhost:<port>/scalar/v1
 ```

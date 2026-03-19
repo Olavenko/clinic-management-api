@@ -10,9 +10,9 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/ClinicManagementAPI.Api/bin/Debug/net10.0/ClinicManagementAPI.Api.dll",
+            "program": "${workspaceFolder}/src/ClinicManagementAPI.Api/bin/Debug/net10.0/ClinicManagementAPI.Api.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/ClinicManagementAPI.Api",
+            "cwd": "${workspaceFolder}/src/ClinicManagementAPI.Api",
             "stopAtEntry": false,
             // Enable launching a web browser when ASP.NET Core starts. For more information: https://aka.ms/VSCode-CS-LaunchJson-WebBrowser
             "serverReadyAction": {

@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj",
+                "${workspaceFolder}/src/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj",
+                "${workspaceFolder}/src/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj"
+                "${workspaceFolder}/src/ClinicManagementAPI.Api/ClinicManagementAPI.Api.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
