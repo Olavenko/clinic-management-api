@@ -1,0 +1,128 @@
+@startuml
+' -------------------------------------------------------
+' File: erd.puml
+' -------------------------------------------------------
+' Purpose   : ERD — Database Schema Final
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-19
+' Sprint    : 6 — Polish & Restructure
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title ERD — Final Database Schema (Sprint 6)
+
+' === Header/Footer ===
+header Clinic Management System - Database Design
+footer Sprint 6 — Patient, Doctor, Appointment & Identity Tables (Final)
+
+' === Layout Settings ===
+skinparam nodesep 80
+skinparam ranksep 60
+
+' === Tables ===
+
+package "Patient Management" #0D1117 {
+    entity "<color:#58A6FF><&medical-cross></color> Patients" as PATIENTS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * FullName : nvarchar(100)
+        * Email : nvarchar(450) <<UK, Filtered: IsDeleted=0>>
+        * Phone : nvarchar(max)
+        * DateOfBirth : date
+        * Gender : int <<enum>>
+        Address : nvarchar(250) <<nullable>>
+        * CreatedAt : datetime2
+        UpdatedAt : datetime2 <<nullable>>
+        --
+        UserId : nvarchar(450) <<FK, nullable>>
+        --
+        * IsDeleted : bit <<default: 0>>
+        DeletedAt : datetime2 <<nullable>>
+    }
+}
+
+package "Doctor Management" #0D1117 {
+    entity "<color:#3FB950><&stethoscope></color> Doctors" as DOCTORS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * FullName : nvarchar(100)
+        * Email : nvarchar(450) <<UK, Filtered: IsDeleted=0>>
+        * Phone : nvarchar(max)
+        * Specialization : nvarchar(100)
+        * YearsOfExperience : int
+        Bio : nvarchar(500) <<nullable>>
+        * IsAvailable : bit <<default: 1>>
+        * CreatedAt : datetime2
+        UpdatedAt : datetime2 <<nullable>>
+        --
+        * IsDeleted : bit <<default: 0>>
+        DeletedAt : datetime2 <<nullable>>
+    }
+}
+
+package "Appointment Management" #0D1117 {
+    entity "<color:#D29922><&calendar></color> Appointments" as APPOINTMENTS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * PatientId : int <<FK -> Patients.Id>>
+        * DoctorId : int <<FK -> Doctors.Id>>
+        * AppointmentDate : date
+        * AppointmentTime : time
+        * DurationMinutes : int <<default: 30>>
+        * Status : int <<enum: 0=Scheduled, 1=Completed, 2=Cancelled>>
+        Notes : nvarchar(max) <<nullable>>
+        * CreatedAt : datetime2
+        UpdatedAt : datetime2 <<nullable>>
+    }
+}
+
+package "ASP.NET Core Identity" #161B22 {
+    entity "<color:#3FB950><&person></color> AspNetUsers" as USERS << Table >> {
+        * **Id** : nvarchar(450) <<PK>>
+        --
+        * FullName : nvarchar(max)
+        * Email : nvarchar(256) <<Unique>>
+        * UserName : nvarchar(256) <<Unique>>
+        * PasswordHash : nvarchar(max)
+        * CreatedAt : datetime2
+        SecurityStamp : nvarchar(max)
+        ConcurrencyStamp : nvarchar(max)
+    }
+
+    entity "<color:#A371F7><&shield></color> AspNetRoles" as ROLES << Table >> {
+        * **Id** : nvarchar(450) <<PK>>
+        --
+        * Name : nvarchar(256) <<Unique>>
+        NormalizedName : nvarchar(256)
+        ConcurrencyStamp : nvarchar(max)
+    }
+
+    entity "<color:#D29922><&link-intact></color> AspNetUserRoles" as USER_ROLES << Junction >> {
+        * **UserId** : nvarchar(450) <<PK, FK>>
+        * **RoleId** : nvarchar(450) <<PK, FK>>
+    }
+
+    entity "<color:#D29922><&key></color> RefreshTokens" as TOKENS << Table >> {
+        * **Id** : int <<PK, Identity>>
+        --
+        * Token : nvarchar(max)
+        * ExpiresAt : datetime2
+        * CreatedAt : datetime2
+        * IsRevoked : bit
+        --
+        * UserId : nvarchar(450) <<FK>>
+    }
+}
+
+' === Relationships ===
+APPOINTMENTS }o--|| PATIENTS : " (1) FK PatientId\n(ON DELETE RESTRICT) "
+APPOINTMENTS }o--|| DOCTORS : " (2) FK DoctorId\n(ON DELETE RESTRICT) "
+PATIENTS }o..|| USERS : " (3) Optional FK\n(UserId -> Id) "
+USERS ||--o{ TOKENS : " (4) Owns\n(UserId -> Id) "
+USERS ||--o{ USER_ROLES : " (5) Assigned "
+ROLES ||--o{ USER_ROLES : " (6) Contains "
+
+@enduml

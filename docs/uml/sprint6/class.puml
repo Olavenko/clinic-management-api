@@ -1,0 +1,97 @@
+@startuml
+' -------------------------------------------------------
+' File: class.puml
+' -------------------------------------------------------
+' Purpose   : Class Diagram — Error Handling Architecture
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-19
+' Sprint    : 6 — Polish & Restructure
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Class Diagram — Error Consistency Architecture (Sprint 6)
+
+' === Header/Footer ===
+header Clinic Management System - Error Handling Model
+footer Sprint 6 — Result Pattern & ProblemDetails
+
+' === Layout Settings ===
+skinparam groupInheritance 2
+skinparam nodesep 60
+skinparam ranksep 60
+
+' === Packages ===
+
+package "ClinicManagementAPI.Core.Models" #161B22 {
+
+    class "<color:#3FB950><&box></color> Result<T>" << (S,#3FB950) Structure >> {
+        + IsSuccess : bool
+        + IsFailure : bool
+        + Value : T
+        + Error : string
+        + StatusCode : int
+        {static} + Success(value: T) : Result<T>
+        {static} + Failure(error: string, code: int) : Result<T>
+        {static} + NotFound(msg: string) : Result<T>
+        {static} + BadRequest(msg: string) : Result<T>
+    }
+}
+
+package "ClinicManagementAPI.Api.Middleware" #0D1117 {
+
+    class "<color:#F85149><&shield></color> GlobalExceptionHandler" << IExceptionHandler >> {
+        - _logger : ILogger<GlobalExceptionHandler>
+        + TryHandleAsync(...) : ValueTask<bool>
+    }
+
+}
+
+package "Microsoft.AspNetCore.Mvc" #161B22 {
+
+    class "ProblemDetails" << Class >> {
+        + Type : string
+        + Title : string
+        + Status : int?
+        + Detail : string
+        + Instance : string
+        + Extensions : IDictionary<string, object>
+    }
+
+}
+
+package "ClinicManagementAPI.Api.Extensions" #0D1117 {
+
+    class "ResultExtensions" << Static >> {
+        {static} + ToHttpResponse<T>(result: Result<T>) : IResult
+    }
+
+}
+
+' === Relationships ===
+
+' Middleware uses ProblemDetails
+GlobalExceptionHandler -[#F85149]down-> ProblemDetails : " Creates on\nUnhandled Exception "
+
+' Endpoints map Result to HTTP response
+ResultExtensions .[#58A6FF]left.> "Result<T>" : " Extension Method "
+
+' === Notes ===
+
+note right of GlobalExceptionHandler
+    Implements **IExceptionHandler**
+    Catches system crashes,
+    logs securely, and returns a
+    clean 500 ProblemDetails JSON.
+    Never exposes stack traces.
+end note
+
+note bottom of "Result<T>"
+    Used internally by Services.
+    Explicitly tracks business logic
+    errors (e.g. Validation, 404).
+end note
+
+@enduml

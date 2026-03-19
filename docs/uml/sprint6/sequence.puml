@@ -1,0 +1,92 @@
+@startuml
+' -------------------------------------------------------
+' File: sequence.puml
+' -------------------------------------------------------
+' Purpose   : Sequence — Error Handling Flow
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-19
+' Sprint    : 6 — Polish & Restructure
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Sequence — Error Handling & Consistency (Sprint 6)
+
+' === Header/Footer ===
+header Clinic Management System - Error Handling Flow
+footer Sprint 6 — Two-Layer Error Handling Strategy
+
+' === Global Settings ===
+autonumber "<b>[00]</b>"
+
+' === Participants by Layer ===
+box "Client Layer" #161B22
+    actor "<color:#E6EDF3><&person></color> Client" as CLIENT
+end box
+
+box "API Layer" #0D1117
+    participant "<color:#F85149><&shield></color> GlobalExceptionHandler" as EH << (M,#F85149) Middleware >>
+    participant "<color:#58A6FF><&cog></color> Endpoints" as ENDP << Minimal API >>
+end box
+
+box "Core Layer" #161B22
+    participant "<color:#3FB950><&cog></color> Business Service" as SVC << Service >>
+    database "<color:#D29922><&hard-drive></color> DB" as DB
+end box
+
+== Scenario 1: Expected Business Error (Result Pattern) ==
+
+CLIENT -> EH : HTTP Request
+activate EH
+EH -> ENDP : Forward Request
+activate ENDP
+ENDP -> SVC : Execute Action
+activate SVC
+
+SVC -> DB : Query Data
+activate DB
+DB --> SVC : Empty / Conflict
+deactivate DB
+
+note over SVC #21262D: <color:#D29922>Result Pattern</color>\nExpected errors return\nResult.Failure instead\nof throwing exceptions.
+
+SVC --> ENDP : Result.Failure(ErrorDetails, 400/404)
+deactivate SVC
+
+note over ENDP #21262D: Endpoint maps IsFailure\nto standard JSON response.
+
+ENDP --> EH : 400 Bad Request
+deactivate ENDP
+EH --> CLIENT : 400 Bad Request JSON
+deactivate EH
+
+== Scenario 2: Unexpected System Error (Exception Handling) ==
+
+CLIENT -> EH : HTTP Request
+activate EH
+EH -> ENDP : Forward Request
+activate ENDP
+ENDP -> SVC : Execute Action
+activate SVC
+
+SVC -> DB : Query Data
+activate DB
+note right DB: Database timeout\nor connection loss!
+DB -[#F85149]X SVC : SqlException!
+deactivate DB
+
+SVC -[#F85149]X ENDP : Unhandled Exception
+deactivate SVC
+
+ENDP -[#F85149]X EH : Unhandled Exception
+deactivate ENDP
+
+note over EH #21262D: <color:#F85149>GlobalExceptionHandler</color>\nCatches unhandled errors.\nLogs stack trace securely.\nGenerates ProblemDetails.
+
+EH -> EH : LogError(exception)
+EH --> CLIENT : 500 Internal Server Error\n(ProblemDetails JSON without stack trace)
+deactivate EH
+
+@enduml
