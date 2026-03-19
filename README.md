@@ -1,14 +1,30 @@
 # Clinic Management API
 
 ![CI](https://github.com/Olavenko/clinic-management-api/actions/workflows/build.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-181%20passing-success?logo=dotnet)
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=c-sharp&logoColor=white)
 ![.NET 10](https://img.shields.io/badge/.NET%2010-512BD4?logo=dotnet&logoColor=white)
 ![Entity Framework Core](https://img.shields.io/badge/EF%20Core-512BD4?logo=dotnet&logoColor=white)
 ![SQL Server](https://img.shields.io/badge/SQL%20Server-CC2927?logo=microsoft-sql-server&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-black?logo=JSON%20web%20tokens)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-6BA539?logo=openapi-initiative&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 A RESTful API for managing clinic appointments, patients, and doctors — built with ASP.NET Core Minimal API (.NET 10). Features JWT authentication with refresh tokens, role-based authorization, soft delete, appointment overlap detection, and 181 passing tests.
+
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Architecture](#architecture)
+- [Role-Based Authorization](#role-based-authorization)
+- [API Endpoints](#api-endpoints)
+- [Business Rules](#business-rules)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Development Roadmap](#development-roadmap)
+- [Documentation](#documentation)
+- [License](#license)
 
 ## Tech Stack
 
@@ -20,14 +36,50 @@ A RESTful API for managing clinic appointments, patients, and doctors — built 
 - **GitHub Actions CI** — build + test on every push
 - **OpenAPI** + Scalar UI for interactive API docs
 
+## Getting Started
+
+### Prerequisites
+
+- .NET 10 SDK
+- SQL Server (LocalDB, Express, or full instance)
+
+### Setup
+
+```bash
+# Clone
+git clone https://github.com/Olavenko/clinic-management-api.git
+cd clinic-management-api
+
+# Configure secrets (never committed)
+dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project src/ClinicManagementAPI.Api
+dotnet user-secrets set "Jwt:Key" "your-secret-key-at-least-32-characters" --project src/ClinicManagementAPI.Api
+
+# Apply migrations
+dotnet ef database update --project src/ClinicManagementAPI.Core --startup-project src/ClinicManagementAPI.Api
+
+# Run
+dotnet run --project src/ClinicManagementAPI.Api
+
+# Open Scalar UI at https://localhost:<port>/scalar/v1
+```
+
 ## Architecture
 
 3-project layered architecture with clear dependency direction:
 
-```
-src/ClinicManagementAPI.Api        → Endpoints, Filters, Middleware, Program.cs
-src/ClinicManagementAPI.Core       → Models, Services, Interfaces, Data, DTOs, Migrations
-tests/ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
+```mermaid
+flowchart LR
+    Api[src/ClinicManagementAPI.Api] -->|Depends on| Core[src/ClinicManagementAPI.Core]
+    Tests[tests/ClinicManagementAPI.Tests] -->|Depends on| Core
+    Tests -.->|Zero dependency| Api
+    
+    classDef main fill:#512BD4,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef core fill:#239120,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef tests fill:#CC2927,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class Api main;
+    class Core core;
+    class Tests tests;
 ```
 
 `Api → Core ← Tests` — Core has zero dependency on the web layer.
@@ -35,7 +87,7 @@ tests/ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
 ### Key Design Decisions
 
 | Decision | Why |
-|----------|-----|
+| -------- | --- |
 | **Result Pattern** | Business errors (duplicate email, invalid status) returned as `Result<T>` — no exception-driven control flow |
 | **Global Exception Handler** | Unexpected errors caught centrally, returned as ProblemDetails JSON. Stack traces never exposed |
 | **Soft Delete** (Patient, Doctor) | EF Core Global Query Filters automatically exclude deleted records from all queries |
@@ -47,7 +99,7 @@ tests/ClinicManagementAPI.Tests      → Unit + Integration tests (181 tests)
 ## Role-Based Authorization
 
 | Action | Admin | Receptionist | Patient |
-|--------|:-----:|:------------:|:-------:|
+| ------ | :---: | :----------: | :-----: |
 | Register / Login | ✓ | ✓ | ✓ |
 | View doctors | ✓ | ✓ | ✓ |
 | Manage patients (CRUD) | ✓ | ✓ | — |
@@ -61,8 +113,9 @@ All new registrations default to the **Patient** role.
 ## API Endpoints
 
 ### Auth
+
 | Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
+| ------ | -------- | ------ | ----------- |
 | POST | `/api/auth/register` | Public | Register new user |
 | POST | `/api/auth/login` | Public | Login → JWT + Refresh Token |
 | POST | `/api/auth/refresh` | Public | Refresh expired JWT |
@@ -70,8 +123,9 @@ All new registrations default to the **Patient** role.
 | PUT | `/api/users/{id}/role` | Admin | Assign role to user |
 
 ### Patients
+
 | Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
+| ------ | -------- | ------ | ----------- |
 | GET | `/api/patients` | Admin, Receptionist | List with search + pagination |
 | GET | `/api/patients/{id}` | Admin, Receptionist | Get by ID |
 | POST | `/api/patients` | Admin, Receptionist | Create patient |
@@ -79,8 +133,9 @@ All new registrations default to the **Patient** role.
 | DELETE | `/api/patients/{id}` | Admin | Soft delete |
 
 ### Doctors
+
 | Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
+| ------ | -------- | ------ | ----------- |
 | GET | `/api/doctors` | Public | List with search + pagination |
 | GET | `/api/doctors/available` | Public | Available doctors only |
 | GET | `/api/doctors/{id}` | Public | Get by ID |
@@ -89,8 +144,9 @@ All new registrations default to the **Patient** role.
 | DELETE | `/api/doctors/{id}` | Admin | Soft delete |
 
 ### Appointments
+
 | Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
+| ------ | -------- | ------ | ----------- |
 | GET | `/api/appointments` | Admin, Receptionist | List with filters + pagination |
 | GET | `/api/appointments/{id}` | Admin, Receptionist | Get by ID |
 | GET | `/api/appointments/patient/{id}` | Admin, Receptionist | By patient |
@@ -101,8 +157,9 @@ All new registrations default to the **Patient** role.
 | DELETE | `/api/appointments/{id}` | Admin | Delete (cancelled only) |
 
 ### Utility
+
 | Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
+| ------ | -------- | ------ | ----------- |
 | GET | `/health` | Public | API + database connectivity check |
 
 ## Business Rules
@@ -129,39 +186,13 @@ dotnet test --collect:"XPlat Code Coverage"
 ### Service Coverage
 
 | Service | Line Coverage |
-|---------|:------------:|
+| ------- | :-----------: |
 | AppointmentService | 95.2% |
 | AuthService | 99.5% |
 | PatientService | 99.4% |
 | DoctorService | 100% |
 
 Tests cover all four service modules including edge cases for overlap detection, status transitions, soft-delete interactions, and authentication flows.
-
-## Getting Started
-
-### Prerequisites
-- .NET 10 SDK
-- SQL Server (LocalDB, Express, or full instance)
-
-### Setup
-
-```bash
-# Clone
-git clone https://github.com/Olavenko/clinic-management-api.git
-cd clinic-management-api
-
-# Configure secrets (never committed)
-dotnet user-secrets set "ConnectionStrings:ClinicDb" "Server=localhost;Database=ClinicDb;Trusted_Connection=True;TrustServerCertificate=True;" --project src/ClinicManagementAPI.Api
-dotnet user-secrets set "Jwt:Key" "your-secret-key-at-least-32-characters" --project src/ClinicManagementAPI.Api
-
-# Apply migrations
-dotnet ef database update --project src/ClinicManagementAPI.Core --startup-project src/ClinicManagementAPI.Api
-
-# Run
-dotnet run --project src/ClinicManagementAPI.Api
-
-# Open Scalar UI at https://localhost:<port>/scalar/v1
-```
 
 ## CI/CD
 
