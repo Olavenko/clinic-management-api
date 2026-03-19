@@ -1,0 +1,98 @@
+@startuml
+' -------------------------------------------------------
+' File: component.puml
+' -------------------------------------------------------
+' Purpose   : Component — Final Architecture with src/ and tests/ layout
+' Layer     : Docs (UML)
+' Author    : Mohamed Ali
+' Created   : 2026-03-19
+' Sprint    : 6 — Polish & Restructure
+' -------------------------------------------------------
+
+!define USE_CUSTOM_THEME
+!include ../config/style.puml
+
+title Component — Final Architecture Overview (Sprint 6)
+
+' === Header/Footer ===
+header Clinic Management System - Architecture Overview
+footer Sprint 6 — Final Polish, Restructure & Deployment
+
+' === Layout Settings ===
+left to right direction
+skinparam nodesep 50
+skinparam ranksep 50
+
+' === External/CI Layer ===
+cloud "<color:#E6EDF3><&cloud></color> GitHub Ecosystem" as GITHUB #161B22 {
+    component "<color:#58A6FF><&cog></color> GitHub Actions" as CI << CI/CD >> #0D1117
+    note bottom of CI: Build, Lint, Test\n(dotnet build/test)
+}
+
+' === Application System ===
+package "ClinicManagementAPI.slnx Solution" #0D1117 {
+
+    package "src /" as SRC_FOLDER {
+        package "<color:#58A6FF><&box></color> ClinicManagementAPI.Api" as API << Layer >> {
+            component "<color:#F85149><&shield></color> Endpoints (Auth, Patient, etc)" as ENDP << Minimal API >>
+            component "<color:#F85149><&shield></color> GlobalExceptionHandler" as EH << Middleware >>
+            component "<color:#F85149><&shield></color> JwtMiddleware" as MW << Middleware >>
+            component "<color:#3FB950><&book></color> Scalar UI" as SCALAR << OpenAPI >>
+        }
+
+        package "<color:#58A6FF><&box></color> ClinicManagementAPI.Core" as CORE << Layer >> {
+            component "<color:#3FB950><&cog></color> Business Services" as SVC << Services >>
+            component "<color:#D29922><&hard-drive></color> AppDbContext" as DATA << Persistence >>
+            component "DTOs & Models" as DTO_MOD
+        }
+    }
+
+    package "tests /" as TESTS_FOLDER {
+        package "<color:#58A6FF><&box></color> ClinicManagementAPI.Tests" as TESTS << Layer >> {
+            component "Unit Tests" as UT << xUnit >>
+            component "Integration" as IT << xUnit >>
+        }
+    }
+}
+
+' === Infrastructure Layer ===
+node "External Infrastructure" #161B22 {
+    database "<color:#D29922><&hard-drive></color> SQL Server" as DB << Database >>
+    component "<color:#A371F7><&shield></color> ASP.NET Core\nIdentity" as IDENTITY << Package >>
+}
+
+' === Presentation Layer (External) ===
+actor "Web/Mobile Client" as CLIENT
+actor "Developer" as DEV
+
+' === Relationships ===
+
+' (1) CI flow
+CI -[#39C5CF]down-> API : " (1) Deploys "
+
+' (2) CI tests
+CI -[#3FB950]down-> TESTS : " (2) Executes "
+
+' (3) Client requests
+CLIENT -[#58A6FF]right-> ENDP : " (3) API Requests "
+
+' (4) Swagger / Scalar
+DEV -[#3FB950]right-> SCALAR : " (4) Views OpenAPI "
+
+' (5) Exception Handling
+ENDP -[#F85149]down-> EH : " (5) Throws Ex "
+
+' (6) Services
+ENDP -[#58A6FF]down-> SVC : " (6) Injects "
+
+' (7) Persistence
+SVC -[#D29922]down-> DATA : " (7) Persists "
+
+' (8) EF Core
+DATA -[#A371F7]down-> DB : " (8) EF Core 10 "
+
+' (9) Tests
+UT .[#F85149]up.> CORE : " (9) Tests via Mocks "
+IT .[#F85149]up.> API : " (10) WebApplicationFactory "
+
+@enduml
