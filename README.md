@@ -1,6 +1,12 @@
 # Clinic Management API
 
 ![CI](https://github.com/Olavenko/clinic-management-api/actions/workflows/build.yml/badge.svg)
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=c-sharp&logoColor=white)
+![.NET 10](https://img.shields.io/badge/.NET%2010-512BD4?logo=dotnet&logoColor=white)
+![Entity Framework Core](https://img.shields.io/badge/EF%20Core-512BD4?logo=dotnet&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-CC2927?logo=microsoft-sql-server&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-black?logo=JSON%20web%20tokens)
+![OpenAPI](https://img.shields.io/badge/OpenAPI-6BA539?logo=openapi-initiative&logoColor=white)
 
 A RESTful API for managing clinic appointments, patients, and doctors — built with ASP.NET Core Minimal API (.NET 10). Features JWT authentication with refresh tokens, role-based authorization, soft delete, appointment overlap detection, and 181 passing tests.
 
