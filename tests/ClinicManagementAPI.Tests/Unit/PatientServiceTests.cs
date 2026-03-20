@@ -388,6 +388,129 @@ public class PatientServiceTests : IDisposable
         Assert.Equal("Patient not found", result.Error);
     }
 
+    // ── T5: Pagination Boundaries ─────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllAsync_WithPageZero_ClampsToPage1()
+    {
+        // Arrange
+        await SeedMultiplePatientsAsync(3);
+
+        // Page=0 is clamped to 1 by PaginationRequest setter
+        var pagination = new PaginationRequest { Page = 0, PageSize = 10 };
+
+        // Act
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value!.Page);
+        Assert.Equal(3, result.Value.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithNegativePageSize_ClampsToDefault()
+    {
+        // Arrange
+        await SeedMultiplePatientsAsync(3);
+
+        // PageSize=-5 is clamped to 10 by PaginationRequest setter
+        var pagination = new PaginationRequest { Page = 1, PageSize = -5 };
+
+        // Act
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(10, result.Value!.PageSize);
+        Assert.Equal(3, result.Value.Items.Count());
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithOversizedPageSize_ClampsTo50()
+    {
+        // Arrange
+        await SeedMultiplePatientsAsync(3);
+
+        // PageSize=100 is clamped to 50 by PaginationRequest setter
+        var pagination = new PaginationRequest { Page = 1, PageSize = 100 };
+
+        // Act
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(50, result.Value!.PageSize);
+    }
+
+    // ── T8: Case-insensitive email uniqueness ────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_WithCaseInsensitiveDuplicateEmail_ReturnsFailureResult()
+    {
+        // Arrange — create with lowercase email
+        await SeedPatientAsync("test@clinic.com");
+
+        // Act — try to create with uppercase email
+        var request = CreateValidRequest("TEST@CLINIC.COM");
+        var result = await _patientService.CreateAsync(request);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Email already registered", result.Error);
+    }
+
+    // ── T9: Special characters in search ─────────────────────────────
+
+    [Fact]
+    public async Task GetAllAsync_WithSpecialCharactersInSearch_ReturnsEmptyResults()
+    {
+        // Arrange
+        await SeedPatientAsync();
+        var pagination = new PaginationRequest { Page = 1, PageSize = 10, SearchTerm = "%'; DROP TABLE--" };
+
+        // Act — should not crash or throw
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Items);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithSqlWildcardsInSearch_ReturnsEmptyResults()
+    {
+        // Arrange
+        await SeedPatientAsync();
+        var pagination = new PaginationRequest { Page = 1, PageSize = 10, SearchTerm = "___%" };
+
+        // Act
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Items);
+    }
+
+    // ── T10: Empty dataset pagination ────────────────────────────────
+
+    [Fact]
+    public async Task GetAllAsync_WithEmptyDatabase_ReturnsEmptyPagedResponse()
+    {
+        // Arrange — no data seeded
+        var pagination = new PaginationRequest { Page = 1, PageSize = 10 };
+
+        // Act
+        var result = await _patientService.GetAllAsync(pagination);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Items);
+        Assert.Equal(0, result.Value.TotalCount);
+        Assert.Equal(1, result.Value.Page);
+    }
+
     [Fact]
     public async Task DeleteAsync_PatientDisappearsFromGetAll()
     {

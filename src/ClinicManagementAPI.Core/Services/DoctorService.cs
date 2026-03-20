@@ -98,7 +98,7 @@ public class DoctorService(AppDbContext context) : IDoctorService
         // IgnoreQueryFilters: prevent email reuse even if prior record was soft-deleted
         bool emailExists = await context.Doctors
             .IgnoreQueryFilters()
-            .AnyAsync(d => d.Email == request.Email, cancellationToken);
+            .AnyAsync(d => d.Email.ToLower() == request.Email.ToLower(), cancellationToken);
 
         if (emailExists)
             return Result<DoctorResponse>.Failure("Email already registered", 400);
@@ -150,11 +150,11 @@ public class DoctorService(AppDbContext context) : IDoctorService
             return Result<DoctorResponse>.Failure("Doctor not found", 404);
 
         // IgnoreQueryFilters: prevent email reuse even if prior record was soft-deleted
-        if (request.Email is not null && request.Email != doctor.Email)
+        if (request.Email is not null && !string.Equals(request.Email, doctor.Email, StringComparison.OrdinalIgnoreCase))
         {
             bool emailExists = await context.Doctors
                 .IgnoreQueryFilters()
-                .AnyAsync(d => d.Email == request.Email && d.Id != id, cancellationToken);
+                .AnyAsync(d => d.Email.ToLower() == request.Email.ToLower() && d.Id != id, cancellationToken);
 
             if (emailExists)
                 return Result<DoctorResponse>.Failure("Email already registered", 400);

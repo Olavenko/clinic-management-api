@@ -173,6 +173,74 @@ public class AppointmentEndpointsTests : IClassFixture<CustomWebApplicationFacto
     }
 
     [Fact]
+    public async Task CreateAppointment_WithReceptionistToken_Returns201()
+    {
+        // Arrange
+        var adminToken = await GetTokenForRoleAsync("Admin");
+        var receptionistToken = await GetTokenForRoleAsync("Receptionist");
+        var patient = await CreatePatientViaApiAsync(adminToken);
+        var doctor = await CreateDoctorViaApiAsync(adminToken);
+
+        var apptReq = new CreateAppointmentRequest
+        {
+            PatientId = patient.Id,
+            DoctorId = doctor.Id,
+            AppointmentDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            AppointmentTime = new TimeOnly(14, 0),
+            DurationMinutes = 30,
+            Notes = "Receptionist created"
+        };
+
+        // Act
+        var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/appointments", receptionistToken, apptReq);
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateAppointment_WithReceptionistToken_Returns200()
+    {
+        // Arrange
+        var adminToken = await GetTokenForRoleAsync("Admin");
+        var receptionistToken = await GetTokenForRoleAsync("Receptionist");
+        var patient = await CreatePatientViaApiAsync(adminToken);
+        var doctor = await CreateDoctorViaApiAsync(adminToken);
+        var appt = await CreateAppointmentViaApiAsync(adminToken, patient.Id, doctor.Id);
+
+        var updateReq = new { Notes = "Updated by receptionist" };
+
+        // Act
+        var request = CreateAuthorizedRequest(
+            HttpMethod.Put, $"/api/appointments/{appt.Id}", receptionistToken, updateReq);
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_WithReceptionistToken_Returns200()
+    {
+        // Arrange
+        var adminToken = await GetTokenForRoleAsync("Admin");
+        var receptionistToken = await GetTokenForRoleAsync("Receptionist");
+        var patient = await CreatePatientViaApiAsync(adminToken);
+        var doctor = await CreateDoctorViaApiAsync(adminToken);
+        var appt = await CreateAppointmentViaApiAsync(adminToken, patient.Id, doctor.Id);
+
+        // Act
+        var statusReq = CreateAuthorizedRequest(
+            HttpMethod.Patch, $"/api/appointments/{appt.Id}/status", receptionistToken,
+            new { Status = (int)AppointmentStatus.Completed });
+        var response = await _client.SendAsync(statusReq);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task DeleteAppointment_WithAdminToken_Returns204()
     {
         // Arrange
