@@ -217,6 +217,26 @@ public class AppointmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_WithSameDayPastTime_ReturnsFailureResult()
+    {
+        // Arrange
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var pastTime = TimeOnly.FromDateTime(DateTime.UtcNow).AddHours(-1);
+
+        var request = CreateValidRequest(patient.Id, doctor.Id, date: today, time: pastTime);
+
+        // Act
+        var result = await _appointmentService.CreateAsync(request);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Appointment time cannot be in the past", result.Error);
+    }
+
+    [Fact]
     public async Task CreateAsync_WithPatientConflict_ReturnsFailureResult()
     {
         // Arrange — create first appointment for patient at 10:00
@@ -831,5 +851,133 @@ public class AppointmentServiceTests : IDisposable
         Assert.False(result.IsSuccess);
         Assert.Equal(404, result.StatusCode);
         Assert.Equal("Appointment not found", result.Error);
+    }
+
+    // ── T4: Invalid Status Values ─────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateStatusAsync_WithInvalidStatusValue_ReturnsFailureResult()
+    {
+        // Arrange
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var appt = await SeedAppointmentAsync(patient.Id, doctor.Id);
+
+        // Act — send an out-of-range enum value (99 is not Scheduled/Completed/Cancelled)
+        var request = new UpdateAppointmentStatusRequest { Status = (AppointmentStatus)99 };
+        var result = await _appointmentService.UpdateStatusAsync(appt.Id, request);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Invalid status transition", result.Error);
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_ScheduledToScheduled_ReturnsFailureResult()
+    {
+        // Arrange — Scheduled → Scheduled is not a valid transition
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var appt = await SeedAppointmentAsync(patient.Id, doctor.Id);
+
+        var request = new UpdateAppointmentStatusRequest { Status = AppointmentStatus.Scheduled };
+
+        // Act
+        var result = await _appointmentService.UpdateStatusAsync(appt.Id, request);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Invalid status transition", result.Error);
+    }
+
+    // ── T5: Pagination Boundaries ─────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllAsync_WithZeroPage_ClampsToPage1()
+    {
+        // Arrange
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        await SeedAppointmentAsync(patient.Id, doctor.Id, futureDate, new TimeOnly(10, 0));
+
+        // Page=0 is clamped to 1 by PaginationRequest setter
+        var filter = new AppointmentFilterRequest { Page = 0, PageSize = 10 };
+
+        // Act
+        var result = await _appointmentService.GetAllAsync(filter);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value!.Page);
+        Assert.Single(result.Value.Items);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithNegativePageSize_ClampsToDefault()
+    {
+        // Arrange
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        await SeedAppointmentAsync(patient.Id, doctor.Id, futureDate, new TimeOnly(10, 0));
+
+        // PageSize=-1 is clamped to 10 by PaginationRequest setter
+        var filter = new AppointmentFilterRequest { Page = 1, PageSize = -1 };
+
+        // Act
+        var result = await _appointmentService.GetAllAsync(filter);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(10, result.Value!.PageSize);
+    }
+
+    // ── T10: Empty Dataset ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllAsync_WithEmptyDataset_ReturnsEmptyPagedResponse()
+    {
+        // Arrange — no data seeded
+        var filter = new AppointmentFilterRequest { Page = 1, PageSize = 10 };
+
+        // Act
+        var result = await _appointmentService.GetAllAsync(filter);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Items);
+        Assert.Equal(0, result.Value.TotalCount);
+    }
+
+    // ── UpdateAsync: Same-day past-time (B2 fix) ─────────────────────
+
+    [Fact]
+    public async Task UpdateAsync_WithSameDayPastTime_ReturnsFailureResult()
+    {
+        // Arrange
+        var patient = await SeedPatientAsync();
+        var doctor = await SeedDoctorAsync();
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var appt = await SeedAppointmentAsync(patient.Id, doctor.Id, futureDate, new TimeOnly(10, 0));
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var pastTime = TimeOnly.FromDateTime(DateTime.UtcNow).AddHours(-1);
+
+        var updateRequest = new UpdateAppointmentRequest
+        {
+            AppointmentDate = today,
+            AppointmentTime = pastTime
+        };
+
+        // Act
+        var result = await _appointmentService.UpdateAsync(appt.Id, updateRequest);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Appointment time cannot be in the past", result.Error);
     }
 }

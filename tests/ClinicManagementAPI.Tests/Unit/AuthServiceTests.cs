@@ -378,6 +378,77 @@ public class AuthServiceTests : IDisposable
         Assert.Equal("User not found", result.Error);
     }
 
+    // ── T6: Token Rotation Reuse Detection ─────────────────────────────
+
+    [Fact]
+    public async Task RefreshTokenAsync_ReuseAfterRotation_RevokesAllTokens()
+    {
+        // Arrange — register to get first refresh token
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Rotation User",
+            Email = "rotation@clinic.com",
+            Password = "Test1234!"
+        };
+        var registerResult = await _authService.RegisterAsync(registerRequest);
+        var firstToken = registerResult.Value!.RefreshToken;
+
+        // Refresh once — first token is now revoked, second token issued
+        var refreshResult = await _authService.RefreshTokenAsync(firstToken);
+        Assert.True(refreshResult.IsSuccess);
+        var secondToken = refreshResult.Value!.RefreshToken;
+
+        // Act — reuse the first (now-revoked) token
+        var reuseResult = await _authService.RefreshTokenAsync(firstToken);
+
+        // Assert — reuse detected, all tokens revoked
+        Assert.False(reuseResult.IsSuccess);
+        Assert.Equal(401, reuseResult.StatusCode);
+        Assert.Equal("Token reuse detected — all sessions revoked", reuseResult.Error);
+
+        // Second token should also be revoked now
+        var secondTokenResult = await _authService.RefreshTokenAsync(secondToken);
+        Assert.False(secondTokenResult.IsSuccess);
+    }
+
+    // ── T7: Token Cleanup Persistence (B1 fix) ─────────────────────────
+
+    [Fact]
+    public async Task RefreshTokenAsync_CleansUpExpiredTokens()
+    {
+        // Arrange — register a user
+        var registerRequest = new RegisterRequest
+        {
+            FullName = "Cleanup User",
+            Email = "cleanup@clinic.com",
+            Password = "Test1234!"
+        };
+        var registerResult = await _authService.RegisterAsync(registerRequest);
+        var userId = (await _userManager.FindByEmailAsync("cleanup@clinic.com"))!.Id;
+
+        // Seed an old expired token directly in DB
+        var expiredToken = new RefreshToken
+        {
+            Token = "old-expired-token",
+            UserId = userId,
+            ExpiresAt = DateTime.UtcNow.AddDays(-10),
+            CreatedAt = DateTime.UtcNow.AddDays(-20),
+            IsRevoked = true
+        };
+        _dbContext.RefreshTokens.Add(expiredToken);
+        await _dbContext.SaveChangesAsync();
+
+        // Act — refresh triggers cleanup
+        var refreshResult = await _authService.RefreshTokenAsync(registerResult.Value!.RefreshToken);
+        Assert.True(refreshResult.IsSuccess);
+
+        // Assert — expired token should be cleaned up (removed from DB)
+        var expiredStillExists = _dbContext.RefreshTokens.Any(rt => rt.Token == "old-expired-token");
+        Assert.False(expiredStillExists);
+    }
+
+    // ── AssignRole ─────────────────────────────────────────────────────────
+
     [Fact]
     public async Task AssignRoleAsync_WithInvalidRole_ReturnsFailureResult()
     {

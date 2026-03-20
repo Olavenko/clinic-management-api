@@ -424,6 +424,44 @@ public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task AssignRole_WithPatientToken_Returns403()
+    {
+        // Arrange
+        var patientToken = await GetTokenForRoleAsync("Patient");
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, "/api/users/some-user-id/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "Receptionist" })
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", patientToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AssignRole_WithDoctorToken_Returns403()
+    {
+        // Arrange
+        var doctorToken = await GetTokenForRoleAsync("Doctor");
+
+        var assignRequest = new HttpRequestMessage(HttpMethod.Put, "/api/users/some-user-id/role")
+        {
+            Content = JsonContent.Create(new AssignRoleRequest { Role = "Receptionist" })
+        };
+        assignRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", doctorToken);
+
+        // Act
+        var response = await _client.SendAsync(assignRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AssignRole_WithInvalidUserId_Returns404()
     {
         // Arrange

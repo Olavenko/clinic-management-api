@@ -164,6 +164,11 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (request.AppointmentDate < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
 
+        // B2 fix — Same-day past-time validation
+        if (request.AppointmentDate == DateOnly.FromDateTime(DateTime.UtcNow)
+            && request.AppointmentTime < TimeOnly.FromDateTime(DateTime.UtcNow))
+            return Result<AppointmentResponse>.Failure("Appointment time cannot be in the past", 400);
+
         // Serializable transaction: overlap check + save are atomic
         // Prevents two concurrent requests from booking the same slot
         using var transaction = await context.Database
@@ -272,6 +277,14 @@ public class AppointmentService(AppDbContext context) : IAppointmentService
         if (request.AppointmentDate is not null
             && request.AppointmentDate.Value < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result<AppointmentResponse>.Failure("Appointment date cannot be in the past", 400);
+
+        // B2 fix — Same-day past-time validation
+        DateOnly finalDateForTimeCheck = request.AppointmentDate ?? appointment.AppointmentDate;
+        TimeOnly finalTimeForTimeCheck = request.AppointmentTime ?? appointment.AppointmentTime;
+
+        if (finalDateForTimeCheck == DateOnly.FromDateTime(DateTime.UtcNow)
+            && finalTimeForTimeCheck < TimeOnly.FromDateTime(DateTime.UtcNow))
+            return Result<AppointmentResponse>.Failure("Appointment time cannot be in the past", 400);
 
         // Serializable transaction: overlap check + save are atomic
         using var transaction = await context.Database
