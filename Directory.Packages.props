@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup Label="For web services.">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.10" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.13.17" />
   </ItemGroup>
   <ItemGroup Label="For health checks.">
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="$(MicrosoftExtensionsVersion)" />
